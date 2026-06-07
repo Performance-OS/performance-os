@@ -2962,6 +2962,7 @@
                 const target = g.target;
                 // Bar: left=slower of (pb/pred), right=goal, fill from left to faster of (pb/pred)
                 // Range spans from worst to goal
+                const improving = pred && pred < pb;
                 const worst = pred ? Math.max(pb, pred) : Math.round(pb * 1.08);
                 const range = worst - target;
                 const barColor = pred ? (improving ? '#60d5a0' : '#f56060') : '#60d5f5';
