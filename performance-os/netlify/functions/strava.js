@@ -1,5 +1,4 @@
 const https = require('https');
-
 const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
 const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 
@@ -11,9 +10,9 @@ function httpsPost(hostname, path, body) {
       headers: {'Content-Type':'application/json','Content-Length':Buffer.byteLength(data)}
     };
     const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => { try{resolve(JSON.parse(body));}catch(e){reject(new Error('Parse: '+body.substring(0,200)));} });
+      let b = '';
+      res.on('data', c => b += c);
+      res.on('end', () => { try{resolve(JSON.parse(b));}catch(e){reject(new Error('Parse: '+b.substring(0,200)));} });
     });
     req.on('error', reject);
     req.write(data);
@@ -28,9 +27,9 @@ function httpsGet(hostname, path, token) {
       headers: {Authorization: 'Bearer ' + token}
     };
     const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => { try{resolve(JSON.parse(body));}catch(e){reject(new Error('Parse: '+body.substring(0,200)));} });
+      let b = '';
+      res.on('data', c => b += c);
+      res.on('end', () => { try{resolve(JSON.parse(b));}catch(e){reject(new Error('Parse: '+b.substring(0,200)));} });
     });
     req.on('error', reject);
     req.end();
@@ -65,29 +64,14 @@ exports.handler = async (event) => {
 
     const token = tokenData.access_token;
 
-    // Fetch activities and athlete stats in parallel
-    const [activities, stats] = await Promise.all([
-      httpsGet('www.strava.com', '/api/v3/athlete/activities?per_page=30&page=1', token),
-      httpsGet('www.strava.com', '/api/v3/athletes/' + (tokenData.athlete ? tokenData.athlete.id : 'me') + '/stats', token)
-        .catch(() => null)
-    ]);
+    // Fetch activities (30 to get 10 runs past gym sessions)
+    const activities = await httpsGet('www.strava.com', '/api/v3/athlete/activities?per_page=30&page=1', token);
 
-    // Fetch athlete profile to get ID if not in token response
-    let athleteStats = stats;
-    if (!athleteStats) {
-      try {
-        const athlete = await httpsGet('www.strava.com', '/api/v3/athlete', token);
-        if (athlete && athlete.id) {
-          athleteStats = await httpsGet('www.strava.com', '/api/v3/athletes/' + athlete.id + '/stats', token).catch(() => null);
-        }
-      } catch(e) {}
-    }
-
-    // Process activities
     if (!Array.isArray(activities)) {
-      return { statusCode: 200, headers, body: JSON.stringify({ runs: [], pbs: {}, predictions: {}, new_refresh_token: refresh_token }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ runs: [], pbs: {}, new_refresh_token: refresh_token }) };
     }
 
+    // Filter to runs, take last 10
     const runs = activities
       .filter(a => a.type === 'Run' || a.sport_type === 'Run')
       .slice(0, 10)
@@ -103,43 +87,35 @@ exports.handler = async (event) => {
         elevation_gain: Math.round(a.total_elevation_gain) || 0
       }));
 
-    // Extract best efforts PBs from recent activities
-    const pbs = {};
-    const distances = { '400m': 400, '1/2 mile': 805, '1k': 1000, '1 mile': 1609, '2 mile': 3219, '5k': 5000, '10k': 10000, 'half marathon': 21097, 'marathon': 42195 };
-    
-    activities
-      .filter(a => a.type === 'Run' || a.sport_type === 'Run')
-      .forEach(a => {
-        if (a.best_efforts) {
-          a.best_efforts.forEach(effort => {
-            const key = effort.name.toLowerCase();
-            if (distances[key] !== undefined) {
-              if (!pbs[key] || effort.elapsed_time < pbs[key]) {
-                pbs[key] = effort.elapsed_time;
-              }
-            }
-          });
-        }
-      });
+    // Extract all-time PBs from best_efforts across all fetched runs
+    // Also fetch more activities specifically to find best efforts for all distances
+    const pbActivities = await httpsGet('www.strava.com', '/api/v3/athlete/activities?per_page=100&page=1', token);
+    const allRuns = Array.isArray(pbActivities) ? pbActivities.filter(a => a.type === 'Run' || a.sport_type === 'Run') : activities.filter(a => a.type === 'Run' || a.sport_type === 'Run');
 
-    // Extract predictions from athlete stats
-    const predictions = {};
-    if (athleteStats && athleteStats.recent_run_totals) {
-      // Strava provides recent_run_totals but not direct predictions
-      // We calculate predicted times from recent pace data
-      const recentRuns = activities
-        .filter(a => (a.type === 'Run' || a.sport_type === 'Run') && a.average_speed > 0)
-        .slice(0, 5);
-      
-      if (recentRuns.length > 0) {
-        const avgSpeed = recentRuns.reduce((s, r) => s + r.average_speed, 0) / recentRuns.length;
-        // Apply race effort multipliers
-        predictions['5k'] = Math.round(5000 / (avgSpeed * 1.05));
-        predictions['10k'] = Math.round(10000 / (avgSpeed * 1.02));
-        predictions['half marathon'] = Math.round(21097 / (avgSpeed * 0.98));
-        predictions['marathon'] = Math.round(42195 / (avgSpeed * 0.94));
+    const targetDistances = ['400m','1k','1 mile','2 mile','5k','10k','half marathon','marathon'];
+    const pbs = {};
+
+    allRuns.forEach(a => {
+      if (a.best_efforts && Array.isArray(a.best_efforts)) {
+        a.best_efforts.forEach(effort => {
+          const key = effort.name.toLowerCase();
+          if (targetDistances.includes(key)) {
+            if (!pbs[key] || effort.elapsed_time < pbs[key]) {
+              pbs[key] = effort.elapsed_time;
+            }
+          }
+        });
       }
-    }
+    });
+
+    // Get athlete stats for additional PB data
+    try {
+      const athlete = await httpsGet('www.strava.com', '/api/v3/athlete', token);
+      if (athlete && athlete.id) {
+        const stats = await httpsGet('www.strava.com', `/api/v3/athletes/${athlete.id}/stats`, token);
+        // Stats has recent/all-time totals but not individual PBs — already covered by best_efforts above
+      }
+    } catch(e) {}
 
     return {
       statusCode: 200,
@@ -147,7 +123,6 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         runs,
         pbs,
-        predictions,
         new_refresh_token: tokenData.refresh_token || refresh_token
       })
     };
