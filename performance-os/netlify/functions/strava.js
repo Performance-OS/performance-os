@@ -88,7 +88,7 @@ exports.handler = async (event) => {
     // Step 2: Fetch last 15 activities (filter to 10 runs)
     const activities = await httpsGet(
       'www.strava.com',
-      '/api/v3/athlete/activities?per_page=15&page=1',
+      '/api/v3/athlete/activities?per_page=30&page=1',
       tokenData.access_token
     );
 
