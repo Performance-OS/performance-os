@@ -7,21 +7,13 @@ function httpsPost(hostname, path, body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const options = {
-      hostname,
-      path,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data)
-      }
+      hostname, path, method: 'POST',
+      headers: {'Content-Type':'application/json','Content-Length':Buffer.byteLength(data)}
     };
     const req = https.request(options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch(e) { reject(new Error('Parse error: ' + body.substring(0, 200))); }
-      });
+      res.on('end', () => { try{resolve(JSON.parse(body));}catch(e){reject(new Error('Parse: '+body.substring(0,200)));} });
     });
     req.on('error', reject);
     req.write(data);
@@ -32,18 +24,13 @@ function httpsPost(hostname, path, body) {
 function httpsGet(hostname, path, token) {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname,
-      path,
-      method: 'GET',
-      headers: { Authorization: 'Bearer ' + token }
+      hostname, path, method: 'GET',
+      headers: {Authorization: 'Bearer ' + token}
     };
     const req = https.request(options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch(e) { reject(new Error('Parse error: ' + body.substring(0, 200))); }
-      });
+      res.on('end', () => { try{resolve(JSON.parse(body));}catch(e){reject(new Error('Parse: '+body.substring(0,200)));} });
     });
     req.on('error', reject);
     req.end();
@@ -57,51 +44,50 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
     const body = JSON.parse(event.body || '{}');
     const refresh_token = body.refresh_token;
+    if (!refresh_token) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing refresh_token' }) };
 
-    if (!refresh_token) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing refresh_token' }) };
-    }
-
-    // Step 1: Exchange refresh token for access token
+    // Exchange refresh token
     const tokenData = await httpsPost('www.strava.com', '/oauth/token', {
       client_id: STRAVA_CLIENT_ID,
       client_secret: STRAVA_CLIENT_SECRET,
-      refresh_token: refresh_token,
+      refresh_token,
       grant_type: 'refresh_token'
     });
 
     if (!tokenData.access_token) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: 'Token exchange failed', detail: tokenData.message || 'unknown' })
-      };
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token exchange failed', detail: tokenData.message || 'unknown' }) };
     }
 
-    // Step 2: Fetch last 15 activities (filter to 10 runs)
-    const activities = await httpsGet(
-      'www.strava.com',
-      '/api/v3/athlete/activities?per_page=30&page=1',
-      tokenData.access_token
-    );
+    const token = tokenData.access_token;
 
-    // Ensure activities is an array
+    // Fetch activities and athlete stats in parallel
+    const [activities, stats] = await Promise.all([
+      httpsGet('www.strava.com', '/api/v3/athlete/activities?per_page=30&page=1', token),
+      httpsGet('www.strava.com', '/api/v3/athletes/' + (tokenData.athlete ? tokenData.athlete.id : 'me') + '/stats', token)
+        .catch(() => null)
+    ]);
+
+    // Fetch athlete profile to get ID if not in token response
+    let athleteStats = stats;
+    if (!athleteStats) {
+      try {
+        const athlete = await httpsGet('www.strava.com', '/api/v3/athlete', token);
+        if (athlete && athlete.id) {
+          athleteStats = await httpsGet('www.strava.com', '/api/v3/athletes/' + athlete.id + '/stats', token).catch(() => null);
+        }
+      } catch(e) {}
+    }
+
+    // Process activities
     if (!Array.isArray(activities)) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ runs: [], new_refresh_token: refresh_token })
-      };
+      return { statusCode: 200, headers, body: JSON.stringify({ runs: [], pbs: {}, predictions: {}, new_refresh_token: refresh_token }) };
     }
 
-    // Filter to runs only, take last 10
     const runs = activities
       .filter(a => a.type === 'Run' || a.sport_type === 'Run')
       .slice(0, 10)
@@ -117,20 +103,56 @@ exports.handler = async (event) => {
         elevation_gain: Math.round(a.total_elevation_gain) || 0
       }));
 
+    // Extract best efforts PBs from recent activities
+    const pbs = {};
+    const distances = { '400m': 400, '1/2 mile': 805, '1k': 1000, '1 mile': 1609, '2 mile': 3219, '5k': 5000, '10k': 10000, 'half marathon': 21097, 'marathon': 42195 };
+    
+    activities
+      .filter(a => a.type === 'Run' || a.sport_type === 'Run')
+      .forEach(a => {
+        if (a.best_efforts) {
+          a.best_efforts.forEach(effort => {
+            const key = effort.name.toLowerCase();
+            if (distances[key] !== undefined) {
+              if (!pbs[key] || effort.elapsed_time < pbs[key]) {
+                pbs[key] = effort.elapsed_time;
+              }
+            }
+          });
+        }
+      });
+
+    // Extract predictions from athlete stats
+    const predictions = {};
+    if (athleteStats && athleteStats.recent_run_totals) {
+      // Strava provides recent_run_totals but not direct predictions
+      // We calculate predicted times from recent pace data
+      const recentRuns = activities
+        .filter(a => (a.type === 'Run' || a.sport_type === 'Run') && a.average_speed > 0)
+        .slice(0, 5);
+      
+      if (recentRuns.length > 0) {
+        const avgSpeed = recentRuns.reduce((s, r) => s + r.average_speed, 0) / recentRuns.length;
+        // Apply race effort multipliers
+        predictions['5k'] = Math.round(5000 / (avgSpeed * 1.05));
+        predictions['10k'] = Math.round(10000 / (avgSpeed * 1.02));
+        predictions['half marathon'] = Math.round(21097 / (avgSpeed * 0.98));
+        predictions['marathon'] = Math.round(42195 / (avgSpeed * 0.94));
+      }
+    }
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         runs,
+        pbs,
+        predictions,
         new_refresh_token: tokenData.refresh_token || refresh_token
       })
     };
 
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Server error', detail: err.message })
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server error', detail: err.message }) };
   }
 };
