@@ -1728,6 +1728,23 @@
             </button>
         </div>
 
+        <!-- CALENDAR SCREEN (placeholder) -->
+        <div class="screen" id="screen-calendar">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Calendar</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2rem">Google Calendar integration</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;text-align:center">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:1rem">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:.5rem">Coming in Stage 5</div>
+                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);line-height:1.7">Google Calendar will connect here — showing your upcoming training sessions, travel, work commitments and auto-adapting your plan around them.</div>
+            </div>
+        </div>
+
         <!-- LIFT LOGGER SCREEN -->
         <div class="screen" id="screen-log">
             <div class="log-title">
@@ -1767,6 +1784,22 @@
             <!-- HRV TREND -->
             <div class="dash-section-label" style="margin-top:1.5rem">Recovery Trend</div>
             <div id="hrv-container"></div>
+
+            <!-- CALENDAR BUTTON -->
+            <div style="margin-top:1.5rem">
+                <button onclick="switchTab('calendar')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <span>Training Calendar</span>
+                    </div>
+                    <span style="color:var(--muted);font-size:12px">coming soon →</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -2445,6 +2478,8 @@
         } else if (tab === 'dashboard') {
             buildDashboard();
             showScreen('dashboard');
+        } else if (tab === 'calendar') {
+            showScreen('calendar');
         }
     }
 
@@ -2784,7 +2819,7 @@
     {
         key: 'bench',
         name: 'Bench Press 1RM',
-        current: 91,
+        current: null,
         target: 100,
         unit: 'kg',
         lower: false
@@ -2792,7 +2827,7 @@
     {
         key: 'pullups',
         name: 'Pull Ups → Muscle Up',
-        current: 12,
+        current: null,
         target: 20,
         unit: 'reps',
         lower: false
@@ -2821,16 +2856,23 @@
         buildHRVTrend(appData);
     }
 
-    // ── EPLEY 1RM FORMULA ──
-    function epley1RM(weight, reps) {
+    // ── BRZYCKI 1RM FORMULA (more accurate for low reps) ──
+    function brzycki1RM(weight, reps) {
         if (reps === 1)
             return weight;
-        return Math.round(weight * (1 + reps / 30) * 10) / 10;
+        if (reps >= 37)
+            return weight; // formula breaks down above 36 reps
+        return Math.round((weight * (36 / (37 - reps))) * 10) / 10;
     }
 
-    // ── RIEGEL RACE PREDICTION ──
-    function riegelPredict(knownSecs, knownDist, targetDist) {
-        return Math.round(knownSecs * Math.pow(targetDist / knownDist, 1.06));
+    // ── CAMERON RACE PREDICTION (better than Riegel for longer distances) ──
+    // Uses Pete Riegel with a fatigue factor correction
+    function predictRaceTime(knownSecs, knownDist, targetDist) {
+        // Riegel with fatigue exponent 1.07 (slightly more conservative than 1.06)
+        const raw = knownSecs * Math.pow(targetDist / knownDist, 1.07);
+        // Singapore heat adjustment: PBs are race performances (likely in cooler conditions or morning)
+        // For predictions we assume similar race conditions so no heat penalty on PBs
+        return Math.round(raw);
     }
 
     function buildGoals(appData) {
@@ -2872,7 +2914,7 @@
             const anchor = runGoals.find(g => g.key === '10k') || runGoals.find(g => g.key === '5k') || runGoals[0];
             const anchorDist = distMap[anchor.key];
             Object.entries(distMap).forEach(([key, dist]) => {
-                preds[key] = riegelPredict(anchor.current, anchorDist, dist);
+                preds[key] = predictRaceTime(anchor.current, anchorDist, dist);
             });
         }
 
@@ -2883,7 +2925,7 @@
             if (entry && entry.session && entry.session.exercises && entry.session.exercises.bench) {
                 (entry.session.exercises.bench.sets || []).forEach(s => {
                     if (s.weight && s.reps) {
-                        const e = epley1RM(s.weight, s.reps);
+                        const e = brzycki1RM(s.weight, s.reps);
                         if (e > best1RM)
                             best1RM = e;
                     }
@@ -2928,30 +2970,49 @@
                 const fillPct = Math.min(98, Math.max(2, Math.round(((worst - progressTime) / range) * 100)));
                 const pbPct = Math.min(98, Math.max(2, Math.round(((worst - pb) / range) * 100)));
 
+                // Bar: left=slower of (pb/pred), right=goal, fill from left to faster of (pb/pred)
+                // Range spans from worst to goal
+                const worst = pred ? Math.max(pb, pred) : Math.round(pb * 1.08);
+                const range = worst - target;
+                const barColor = pred ? (improving ? '#60d5a0' : '#f56060') : '#60d5f5';
+
+                // Left label = slower time, right label = goal
+                // Fill endpoint = faster time (or pb if no pred)
+                const leftTime = pred ? (improving ? pb : pred) : pb;
+                const fillTime = pred ? (improving ? pred : pb) : pb;
+                const fillPct = Math.min(96, Math.max(2, Math.round(((worst - fillTime) / range) * 100)));
+
+                // Label positions
+                const leftLabel = pred ? (improving ? 'PB' : 'Predicted') : ' PB';
+                const midLabel = pred ? (improving ? 'Predicted' : 'PB') : null;
+                const midTime = pred ? (improving ? pred : pb) : null;
+                // Mid position as percentage for label alignment
+                const midPct = midTime ? Math.min(90, Math.max(10, Math.round(((worst - midTime) / range) * 100))) : null;
+
                 html += `<div class="goal-card">
-                        <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct" style="color:${predColor};font-size:10px">${predLabel}</div></div>
-                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:.6rem 0 .75rem">
-                          <div>
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">PB</div>
-                            <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--text)">${formatTime(pb)}</div>
-                          </div>
-                          ${pred ? `<div style="text-align:center">
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">predicted</div>
-                            <div style="font-size:17px;font-weight:700;font-family:var(--font-mono);color:${predColor}">${formatTime(pred)}</div>
-                          </div>` : ''}
-                          <div style="text-align:right">
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">goal</div>
-                            <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${formatTime(target)}</div>
-                          </div>
+                        <div class="goal-top" style="margin-bottom:.75rem">
+                          <div class="goal-name">${g.name}</div>
+                          ${pred ? `<div style="font-size:10px;font-family:var(--font-mono);color:${barColor}">${improving ? '↑ improving' : '↓ off pace'}</div>` : ''}
                         </div>
-                        <div style="position:relative;height:4px;background:var(--border);border-radius:2px">
-                          <div style="position:absolute;left:0;top:0;height:100%;width:${fillPct}%;background:${predColor === 'var(--muted2)' ? 'var(--accent)' : predColor};border-radius:2px;transition:width 1s ease"></div>
-                          ${pred ? `<div style="position:absolute;left:${pbPct}%;top:-4px;width:2px;height:12px;background:var(--muted2);border-radius:1px;transform:translateX(-50%)"></div>` : ''}
-                          <div style="position:absolute;right:0;top:-4px;width:2px;height:12px;background:var(--accent);border-radius:1px"></div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;margin-top:4px">
-                          <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">slower ←</div>
-                          <div style="font-size:9px;font-family:var(--font-mono);color:var(--accent)">→ ${formatTime(target)}</div>
+                        <div style="position:relative;margin:.5rem 0 1.5rem">
+                          <div style="position:relative;height:6px;background:var(--border);border-radius:3px">
+                            <div style="position:absolute;left:0;top:0;height:100%;width:${fillPct}%;background:${barColor};border-radius:3px;transition:width 1s ease"></div>
+                            <div style="position:absolute;right:0;top:-3px;width:3px;height:12px;background:var(--accent);border-radius:2px"></div>
+                          </div>
+                          <div style="display:flex;justify-content:space-between;margin-top:6px;position:relative">
+                            <div>
+                              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">${leftLabel}</div>
+                              <div style="font-size:14px;font-weight:700;font-family:var(--font-mono);color:${pred && !improving ? barColor : 'var(--text)'}">${formatTime(leftTime)}</div>
+                            </div>
+                            ${midTime ? `<div style="position:absolute;left:${midPct}%;transform:translateX(-50%);text-align:center">
+                              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">${midLabel}</div>
+                              <div style="font-size:14px;font-weight:700;font-family:var(--font-mono);color:${improving ? barColor : 'var(--text)'}">${formatTime(midTime)}</div>
+                            </div>` : ''}
+                            <div style="text-align:right">
+                              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Goal</div>
+                              <div style="font-size:14px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${formatTime(target)}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>`;
 
@@ -3065,9 +3126,16 @@
                         <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Cool-down jog</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">10 min easy</span></div>
                       </div>`,
                 Saturday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem">Morning — Long Run</div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Warm-up walk</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">5 min</span></div>
                         <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Long run</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">12-16km · 132-148bpm</span></div>
-                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Recovery</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">2-3 hrs rest</span></div>
-                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Legs session</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">see exercises below</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Cool-down + stretch</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">10 min</span></div>
+                        <div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);letter-spacing:.08em;text-transform:uppercase;margin:.75rem 0 .4rem">Afternoon — Legs (2-3hrs later)</div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Squats</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">4 sets x 8-10 reps</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Romanian Deadlifts</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">3 sets x 10-12 reps</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Bulgarian Split Squats</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">3 sets x 8-10 each</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Calf Raises</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">3 sets x 20 reps</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Hip Flexor and Glute</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">2 sets x 15 reps</span></div>
                       </div>`,
                 Sunday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
                         <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Yoga / mobility</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">30-45 min</span></div>
