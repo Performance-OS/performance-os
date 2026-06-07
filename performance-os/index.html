@@ -2747,16 +2747,43 @@
     const GOALS = [
     {
         key: '5k',
-        name: '5K Time',
+        name: '5K',
         current: 19 * 60 + 35,
         target: 19 * 60,
         unit: 'time',
         lower: true,
-        stravaKey: 'best_5k'
+        effortKey: '5k'
+    },
+    {
+        key: '10k',
+        name: '10K',
+        current: 48 * 60 + 14,
+        target: 42 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: '10k'
+    },
+    {
+        key: 'hm',
+        name: 'Half Marathon',
+        current: 104 * 60 + 45,
+        target: 90 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: 'half marathon'
+    },
+    {
+        key: 'marathon',
+        name: 'Marathon',
+        current: 237 * 60 + 52,
+        target: 210 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: 'marathon'
     },
     {
         key: 'bench',
-        name: 'Bench Press',
+        name: 'Bench Press 1RM',
         current: 91,
         target: 100,
         unit: 'kg',
@@ -2769,24 +2796,6 @@
         target: 20,
         unit: 'reps',
         lower: false
-    },
-    {
-        key: 'hm',
-        name: 'Half Marathon',
-        current: null,
-        target: 90 * 60,
-        unit: 'time',
-        lower: true,
-        stravaKey: 'best_half_marathon'
-    },
-    {
-        key: 'marathon',
-        name: 'Marathon',
-        current: null,
-        target: 3.5 * 60 * 60,
-        unit: 'time',
-        lower: true,
-        stravaKey: 'best_marathon'
     }
     ];
 
@@ -2812,126 +2821,150 @@
         buildHRVTrend(appData);
     }
 
+    // ── EPLEY 1RM FORMULA ──
+    function epley1RM(weight, reps) {
+        if (reps === 1)
+            return weight;
+        return Math.round(weight * (1 + reps / 30) * 10) / 10;
+    }
+
+    // ── RIEGEL RACE PREDICTION ──
+    function riegelPredict(knownSecs, knownDist, targetDist) {
+        return Math.round(knownSecs * Math.pow(targetDist / knownDist, 1.06));
+    }
+
     function buildGoals(appData) {
         const container = document.getElementById('goals-container');
+        const keys = Object.keys(appData).sort().reverse();
 
-        // Get stored Strava PBs and predictions
-        const keys0 = Object.keys(appData).sort().reverse();
-        let stravaPBs = {},
-            stravaPreds = {};
-        for (const k of keys0) {
+        // Get Strava PBs
+        let stravaPBs = {};
+        for (const k of keys) {
             if (appData[k] && appData[k].stravaPBs) {
                 stravaPBs = appData[k].stravaPBs;
                 break;
             }
         }
-        for (const k of keys0) {
-            if (appData[k] && appData[k].stravaPredictions) {
-                stravaPreds = appData[k].stravaPredictions;
-                break;
-            }
+
+        // Update running goals from Strava PBs — fall back to seeded values
+        const effortMap = {
+            '5k': '5k',
+            '10k': '10k',
+            'hm': 'half marathon',
+            'marathon': 'marathon'
+        };
+        GOALS.filter(g => g.effortKey).forEach(g => {
+            const val = stravaPBs[g.effortKey] || stravaPBs[g.key];
+            if (val && val > 0)
+                g.current = val;
+        });
+
+        // Riegel predictions — anchor from 10K PB (most reliable)
+        const preds = {};
+        const distMap = {
+            '5k': 5000,
+            '10k': 10000,
+            'hm': 21097,
+            'marathon': 42195
+        };
+        const runGoals = GOALS.filter(g => g.unit === 'time' && g.current);
+        if (runGoals.length > 0) {
+            const anchor = runGoals.find(g => g.key === '10k') || runGoals.find(g => g.key === '5k') || runGoals[0];
+            const anchorDist = distMap[anchor.key];
+            Object.entries(distMap).forEach(([key, dist]) => {
+                preds[key] = riegelPredict(anchor.current, anchorDist, dist);
+            });
         }
 
-        // Update goals with Strava PB data
-        if (stravaPBs['5k'])
-            GOALS.find(g => g.key === '5k').current = stravaPBs['5k'];
-        if (stravaPBs['half marathon'])
-            GOALS.find(g => g.key === 'hm').current = stravaPBs['half marathon'];
-        if (stravaPBs['marathon'])
-            GOALS.find(g => g.key === 'marathon').current = stravaPBs['marathon'];
-
-        // Get latest bench from lift logs
-        let latestBench = null;
-        const keys = Object.keys(appData).sort().reverse();
+        // Epley 1RM for bench — scan all sessions
+        let best1RM = 0;
         for (const k of keys) {
             const entry = appData[k];
             if (entry && entry.session && entry.session.exercises && entry.session.exercises.bench) {
-                const sets = entry.session.exercises.bench.sets;
-                if (sets && sets.length > 0) {
-                    const maxW = Math.max(...sets.filter(s => s.weight).map(s => s.weight));
-                    if (maxW > 0) {
-                        latestBench = maxW;
-                        break;
+                (entry.session.exercises.bench.sets || []).forEach(s => {
+                    if (s.weight && s.reps) {
+                        const e = epley1RM(s.weight, s.reps);
+                        if (e > best1RM)
+                            best1RM = e;
                     }
-                }
+                });
             }
         }
-        if (latestBench)
-            GOALS.find(g => g.key === 'bench').current = latestBench;
+        if (best1RM > 0)
+            GOALS.find(g => g.key === 'bench').current = Math.round(best1RM);
 
-        // Get latest pull up count
-        let latestPullups = null;
+        // Pull up max
         for (const k of keys) {
             const entry = appData[k];
             if (entry && entry.session && entry.session.exercises && entry.session.exercises.ctb_pullups) {
-                const sets = entry.session.exercises.ctb_pullups.sets;
-                if (sets && sets.length > 0) {
-                    const maxR = Math.max(...sets.filter(s => s.reps).map(s => s.reps));
-                    if (maxR > 0) {
-                        latestPullups = maxR;
-                        break;
-                    }
+                const sets = entry.session.exercises.ctb_pullups.sets || [];
+                const maxR = Math.max(...sets.filter(s => s.reps).map(s => s.reps), 0);
+                if (maxR > 0) {
+                    GOALS.find(g => g.key === 'pullups').current = maxR;
+                    break;
                 }
             }
         }
-        if (latestPullups)
-            GOALS.find(g => g.key === 'pullups').current = latestPullups;
 
-        // Get Strava PBs from stored run data
-        const stravaRuns = [];
-        for (const k of keys) {
-            const entry = appData[k];
-            if (entry && entry.stravaRuns) {
-                stravaRuns.push(...entry.stravaRuns);
-                break;
-            }
-        }
-
+        // Render
         let html = '';
         GOALS.forEach(g => {
             if (!g.current) {
-                html += `<div class="goal-card"><div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct" style="color:var(--muted)">no data</div></div><div class="no-data">Log sessions to track progress</div></div>`;
+                html += `<div class="goal-card"><div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct" style="color:var(--muted)">no data yet</div></div></div>`;
                 return;
             }
-            let pct,
-                display,
-                targetDisplay;
+
             if (g.unit === 'time' && g.lower) {
-                pct = Math.min(100, Math.round(((g.current - g.target) / (g.current * 0.15)) * 100));
-                pct = Math.max(0, 100 - pct);
-                display = formatTime(g.current);
-                targetDisplay = 'Target: ' + formatTime(g.target);
+                const pb = g.current;
+                const pred = preds[g.key] || null;
+                const target = g.target;
+                const worst = Math.max(pb, pred || pb) * 1.05;
+                const range = worst - target;
+                const improving = pred && pred < pb;
+                const predColor = pred ? (improving ? 'var(--success)' : 'var(--danger)') : 'var(--muted2)';
+                const predLabel = pred ? (improving ? '↑ improving' : '↓ below PB') : '';
+                // Bar fill — based on predicted if available, else PB
+                const progressTime = pred || pb;
+                const fillPct = Math.min(98, Math.max(2, Math.round(((worst - progressTime) / range) * 100)));
+                const pbPct = Math.min(98, Math.max(2, Math.round(((worst - pb) / range) * 100)));
+
+                html += `<div class="goal-card">
+                        <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct" style="color:${predColor};font-size:10px">${predLabel}</div></div>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:.6rem 0 .75rem">
+                          <div>
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">PB</div>
+                            <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--text)">${formatTime(pb)}</div>
+                          </div>
+                          ${pred ? `<div style="text-align:center">
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">predicted</div>
+                            <div style="font-size:17px;font-weight:700;font-family:var(--font-mono);color:${predColor}">${formatTime(pred)}</div>
+                          </div>` : ''}
+                          <div style="text-align:right">
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">goal</div>
+                            <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${formatTime(target)}</div>
+                          </div>
+                        </div>
+                        <div style="position:relative;height:4px;background:var(--border);border-radius:2px">
+                          <div style="position:absolute;left:0;top:0;height:100%;width:${fillPct}%;background:${predColor === 'var(--muted2)' ? 'var(--accent)' : predColor};border-radius:2px;transition:width 1s ease"></div>
+                          ${pred ? `<div style="position:absolute;left:${pbPct}%;top:-4px;width:2px;height:12px;background:var(--muted2);border-radius:1px;transform:translateX(-50%)"></div>` : ''}
+                          <div style="position:absolute;right:0;top:-4px;width:2px;height:12px;background:var(--accent);border-radius:1px"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:4px">
+                          <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">slower ←</div>
+                          <div style="font-size:9px;font-family:var(--font-mono);color:var(--accent)">→ ${formatTime(target)}</div>
+                        </div>
+                      </div>`;
+
             } else {
-                pct = Math.min(100, Math.round((g.current / g.target) * 100));
-                display = g.unit === 'kg' ? g.current + 'kg' : g.current + ' reps';
-                targetDisplay = 'Target: ' + g.target + (g.unit === 'kg' ? 'kg' : ' reps');
+                const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+                const fillClass = pct >= 100 ? 'achieved' : pct >= 80 ? 'close' : '';
+                const display = g.unit === 'kg' ? g.current + 'kg' : g.current + ' reps';
+                html += `<div class="goal-card">
+                        <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct">${pct}%</div></div>
+                        <div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">Target: ${g.target}${g.unit === 'kg' ? 'kg' : ' reps'}</div></div>
+                        <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
+                      </div>`;
             }
-            const fillClass = pct >= 100 ? 'achieved' : pct >= 80 ? 'close' : '';
-            // Build prediction row for time-based goals
-            let predRow = '';
-            if (g.unit === 'time' && g.lower) {
-                const predKey = g.key === '5k' ? '5k' : g.key === 'hm' ? 'half marathon' : 'marathon';
-                const pred = stravaPreds[predKey];
-                if (pred) {
-                    predRow = `<div style="display:flex;justify-content:space-between;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">
-                              <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">Current PB</span>
-                              <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">Predicted</span>
-                            </div>
-                            <div style="display:flex;justify-content:space-between">
-                              <span style="font-size:13px;font-family:var(--font-mono);color:var(--text);font-weight:600">${display}</span>
-                              <span style="font-size:13px;font-family:var(--font-mono);color:var(--accent2);font-weight:600">${formatTime(pred)}</span>
-                            </div>`;
-                }
-            }
-            html += `
-                <div class="goal-card">
-                  <div class="goal-top">
-                    <div class="goal-name">${g.name}</div>
-                    <div class="goal-pct">${pct}%</div>
-                  </div>
-                  ${predRow || `<div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">${targetDisplay}</div></div>`}
-                  <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
-                </div>`;
         });
         container.innerHTML = html;
     }
@@ -3018,8 +3051,34 @@
                       </div>`;
             });
             workoutHtml += '</div>';
-        } else if (session && session.type === 'run') {
-            workoutHtml = `<div style="margin-top:.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2)">${sessionName}</div>`;
+        } else if (session && session.type === 'run' || session && session.type === 'both' || session && session.type === 'recovery') {
+            const runDetails = {
+                Tuesday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Warm-up walk</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">5-10 min</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Easy Zone 2 run</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">30-40 min · 132-148bpm</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Cool-down walk</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">5 min</span></div>
+                      </div>`,
+                Thursday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Warm-up jog</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">10 min easy</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Intervals</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">4×1km · Z4 181-196bpm</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Recovery jog</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">90 sec between reps</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Cool-down jog</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">10 min easy</span></div>
+                      </div>`,
+                Saturday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Long run</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">12-16km · 132-148bpm</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Recovery</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">2-3 hrs rest</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Legs session</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">see exercises below</span></div>
+                      </div>`,
+                Sunday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Yoga / mobility</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">30-45 min</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Meal prep</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">batch cook for week</span></div>
+                      </div>`,
+                Friday: `<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;color:var(--text)">Light walk</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">20-30 min optional</span></div>
+                        <div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="font-size:12px;color:var(--text)">Foam roll / stretch</span><span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">10-15 min</span></div>
+                      </div>`
+            };
+            workoutHtml = runDetails[day] || `<div style="margin-top:.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2)">${sessionName}</div>`;
         }
 
         detail.innerHTML = `
