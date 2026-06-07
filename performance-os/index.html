@@ -2960,16 +2960,6 @@
                 const pb = g.current;
                 const pred = preds[g.key] || null;
                 const target = g.target;
-                const worst = Math.max(pb, pred || pb) * 1.05;
-                const range = worst - target;
-                const improving = pred && pred < pb;
-                const predColor = pred ? (improving ? 'var(--success)' : 'var(--danger)') : 'var(--muted2)';
-                const predLabel = pred ? (improving ? '↑ improving' : '↓ below PB') : '';
-                // Bar fill — based on predicted if available, else PB
-                const progressTime = pred || pb;
-                const fillPct = Math.min(98, Math.max(2, Math.round(((worst - progressTime) / range) * 100)));
-                const pbPct = Math.min(98, Math.max(2, Math.round(((worst - pb) / range) * 100)));
-
                 // Bar: left=slower of (pb/pred), right=goal, fill from left to faster of (pb/pred)
                 // Range spans from worst to goal
                 const worst = pred ? Math.max(pb, pred) : Math.round(pb * 1.08);
