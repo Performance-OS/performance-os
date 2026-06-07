@@ -1246,6 +1246,11 @@
         opacity: .5
     }
 
+    .week-day.missed {
+        opacity: .4;
+        border-color: rgba(245, 96, 96, .2)
+    }
+
     .week-day-name {
         font-size: 8px;
         font-family: var(--font-mono);
@@ -2148,6 +2153,8 @@
             const data = await res.json();
             if (data.new_refresh_token)
                 lss(SK.stravaToken, data.new_refresh_token);
+            window._stravaPBs = data.pbs || {};
+            window._stravaPredictions = data.predictions || {};
             return data.runs || null;
         } catch (e) {
             console.log('Strava fetch error:', e);
@@ -2313,6 +2320,11 @@
             appData2[todayKey].briefing = brief;
             if (stravaRuns)
                 appData2[todayKey].stravaRuns = stravaRuns;
+            // Save PBs and predictions if returned
+            if (window._stravaPBs)
+                appData2[todayKey].stravaPBs = window._stravaPBs;
+            if (window._stravaPredictions)
+                appData2[todayKey].stravaPredictions = window._stravaPredictions;
             lss(SK.data, JSON.stringify(appData2));
             saveToDrive(appData2);
             buildBriefingScreen(brief, macros, g, false);
@@ -2803,6 +2815,31 @@
     function buildGoals(appData) {
         const container = document.getElementById('goals-container');
 
+        // Get stored Strava PBs and predictions
+        const keys0 = Object.keys(appData).sort().reverse();
+        let stravaPBs = {},
+            stravaPreds = {};
+        for (const k of keys0) {
+            if (appData[k] && appData[k].stravaPBs) {
+                stravaPBs = appData[k].stravaPBs;
+                break;
+            }
+        }
+        for (const k of keys0) {
+            if (appData[k] && appData[k].stravaPredictions) {
+                stravaPreds = appData[k].stravaPredictions;
+                break;
+            }
+        }
+
+        // Update goals with Strava PB data
+        if (stravaPBs['5k'])
+            GOALS.find(g => g.key === '5k').current = stravaPBs['5k'];
+        if (stravaPBs['half marathon'])
+            GOALS.find(g => g.key === 'hm').current = stravaPBs['half marathon'];
+        if (stravaPBs['marathon'])
+            GOALS.find(g => g.key === 'marathon').current = stravaPBs['marathon'];
+
         // Get latest bench from lift logs
         let latestBench = null;
         const keys = Object.keys(appData).sort().reverse();
@@ -2870,16 +2907,29 @@
                 targetDisplay = 'Target: ' + g.target + (g.unit === 'kg' ? 'kg' : ' reps');
             }
             const fillClass = pct >= 100 ? 'achieved' : pct >= 80 ? 'close' : '';
+            // Build prediction row for time-based goals
+            let predRow = '';
+            if (g.unit === 'time' && g.lower) {
+                const predKey = g.key === '5k' ? '5k' : g.key === 'hm' ? 'half marathon' : 'marathon';
+                const pred = stravaPreds[predKey];
+                if (pred) {
+                    predRow = `<div style="display:flex;justify-content:space-between;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">
+                              <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">Current PB</span>
+                              <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">Predicted</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between">
+                              <span style="font-size:13px;font-family:var(--font-mono);color:var(--text);font-weight:600">${display}</span>
+                              <span style="font-size:13px;font-family:var(--font-mono);color:var(--accent2);font-weight:600">${formatTime(pred)}</span>
+                            </div>`;
+                }
+            }
             html += `
                 <div class="goal-card">
                   <div class="goal-top">
                     <div class="goal-name">${g.name}</div>
                     <div class="goal-pct">${pct}%</div>
                   </div>
-                  <div class="goal-values">
-                    <div class="goal-current">${display}</div>
-                    <div class="goal-target">${targetDisplay}</div>
-                  </div>
+                  ${predRow || `<div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">${targetDisplay}</div></div>`}
                   <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
                 </div>`;
         });
@@ -2888,44 +2938,53 @@
 
     function buildWeekGrid(appData) {
         const container = document.getElementById('week-grid');
+        // Remove old detail if exists
+        const oldDetail = document.getElementById('week-detail');
+        if (oldDetail)
+            oldDetail.remove();
         const detail = document.createElement('div');
         detail.className = 'week-detail';
         detail.id = 'week-detail';
 
-        const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const fullDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-        // Get start of current week (Monday)
-        const monday = new Date(now);
-        const dow = now.getDay();
-        const diff = dow === 0 ? -6 : 1 - dow;
-        monday.setDate(now.getDate() + diff);
+        // Build 7-day window: today in centre (index 3), 3 days back, 3 days forward
+        const days = [];
+        for (let i = -3; i <= 3; i++) {
+            const d = new Date(now);
+            d.setDate(now.getDate() + i);
+            days.push(d);
+        }
 
         let html = '';
-        fullDays.forEach((day, i) => {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
+        days.forEach((d, i) => {
             const dateKey = d.toISOString().split('T')[0];
-            const isToday = dateKey === todayKey;
-            const session = WEEK_SESSIONS[day];
+            const isToday = i === 3;
+            const isPast = i < 3;
+            const dayName = DAY_NAMES[d.getDay()];
+            const session = WEEK_SESSIONS[dayName];
             const entry = appData[dateKey];
             const hasLift = entry && entry.session;
-            const hasRun = entry && entry.stravaRuns && entry.stravaRuns.length > 0 && dateKey === todayKey;
-            const completed = hasLift || hasRun;
-            const isRest = session.type === 'rest';
+            const hasCheckin = entry && entry.garmin;
+            const completed = hasLift || hasCheckin;
+            const isRest = session && (session.type === 'rest' || session.type === 'recovery');
 
             let cls = 'week-day';
             if (isToday)
                 cls += ' today';
-            else if (completed)
+            else if (isPast && completed)
                 cls += ' completed';
+            else if (isPast && !isRest)
+                cls += ' missed';
+            else if (!isPast && !isRest)
+                cls += ' has-session';
             else if (isRest)
                 cls += ' rest';
-            else if (session.type !== 'rest')
-                cls += ' has-session';
 
-            html += `<div class="${cls}" onclick="toggleWeekDetail('${day}','${dateKey}','${session.name}',${isToday})">
-                  <div class="week-day-name">${weekDays[i]}</div>
+            const sessionInfo = session ? session.name : 'Rest';
+            html += `<div class="${cls}" onclick="toggleWeekDetail('${dayName}','${dateKey}','${sessionInfo}',${isToday},${isPast})">
+                  <div class="week-day-name">${SHORT[d.getDay()]}</div>
                   <div class="week-day-num">${d.getDate()}</div>
                   <div class="week-day-dot"></div>
                 </div>`;
@@ -2935,9 +2994,8 @@
         container.after(detail);
     }
 
-    function toggleWeekDetail(day, dateKey, sessionName, isToday) {
+    function toggleWeekDetail(day, dateKey, sessionName, isToday, isPast) {
         const detail = document.getElementById('week-detail');
-        const session = WEEK_SESSIONS[day];
         const isOpen = detail.classList.contains('open') && detail.dataset.day === day;
         if (isOpen) {
             detail.classList.remove('open');
@@ -2945,10 +3003,28 @@
         }
         detail.dataset.day = day;
         detail.classList.add('open');
-        const label = isToday ? 'Today' : '';
+        const session = WEEK_SESSIONS[day];
+        const label = isToday ? 'Today — ' : isPast ? 'Past — ' : 'Upcoming — ';
+
+        // Build workout detail
+        const exercises = WORKOUTS[day];
+        let workoutHtml = '';
+        if (exercises && exercises.length > 0) {
+            workoutHtml = '<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">';
+            exercises.forEach(ex => {
+                workoutHtml += `<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)">
+                        <span style="font-size:12px;color:var(--text)">${ex.name}</span>
+                        <span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">${ex.target}</span>
+                      </div>`;
+            });
+            workoutHtml += '</div>';
+        } else if (session && session.type === 'run') {
+            workoutHtml = `<div style="margin-top:.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2)">${sessionName}</div>`;
+        }
+
         detail.innerHTML = `
-            <div class="week-detail-title">${label ? label + ' — ' : ''}${session.short}</div>
-            <div class="week-detail-body">${sessionName}</div>
+            <div class="week-detail-title">${label}${session ? session.short : day}</div>
+            <div class="week-detail-body">${sessionName}${workoutHtml}</div>
           `;
     }
 
