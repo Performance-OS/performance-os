@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Performance OS">
+<title>Performance OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#2a2a2a;
+  --text:#f0ede8;--muted:#666;--muted2:#888;
+  --accent:#c8f560;--accent2:#60d5f5;--accent3:#d0a0ff;
+  --warn:#f5a623;--danger:#f56060;--success:#60d5a0;
+  --r:12px;--font-display:'Syne',sans-serif;--font-mono:'DM Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-display)}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.app{max-width:480px;margin:0 auto;padding:1.5rem 1.25rem 5rem;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+.logo{font-size:11px;font-family:var(--font-mono);color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.day-tag{font-size:11px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,245,96,.1);padding:4px 12px;border-radius:20px;border:1px solid rgba(200,245,96,.2)}
+.screen{display:none}.screen.active{display:block}
+
+/* SETUP */
+.setup-title{font-size:30px;font-weight:800;line-height:1.1;margin-bottom:.4rem}
+.setup-sub{font-size:13px;color:var(--muted2);font-family:var(--font-mono);margin-bottom:1.75rem;line-height:1.6}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1rem}
+.setup-card p{font-size:13px;color:var(--muted2);font-family:var(--font-mono);line-height:1.7;margin-bottom:1rem}
+.setup-card a{color:var(--accent2);text-decoration:none}
+.setup-step{display:flex;gap:12px;margin-bottom:.75rem;align-items:flex-start}
+.step-num{width:22px;height:22px;border-radius:50%;background:rgba(200,245,96,.1);border:1px solid rgba(200,245,96,.2);color:var(--accent);font-size:11px;font-family:var(--font-mono);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;color:var(--muted2);font-family:var(--font-mono);line-height:1.6}
+.step-text a{color:var(--accent2)}
+.field-label{font-size:11px;font-family:var(--font-mono);color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;margin-top:1.25rem}
+.key-input{width:100%;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color .15s}
+.key-input:focus{border-color:rgba(200,245,96,.4)}
+.key-input::placeholder{color:var(--muted)}
+.cta-btn{width:100%;padding:16px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--r);font-size:15px;font-weight:700;font-family:var(--font-display);cursor:pointer;letter-spacing:.02em;margin-top:1rem;transition:opacity .15s}
+.cta-btn:hover{opacity:.85}
+.cta-btn:disabled{opacity:.35;cursor:not-allowed}
+.cta-btn.outline{background:transparent;color:var(--muted2);border:1px solid var(--border);font-size:13px;padding:12px}
+.cta-btn.outline:hover{border-color:var(--muted2);color:var(--text);opacity:1}
+.google-btn{width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-family:var(--font-display);font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:1rem;transition:border-color .15s}
+.google-btn:hover{border-color:var(--muted2)}
+.auth-status{font-size:11px;font-family:var(--font-mono);padding:8px 12px;border-radius:8px;margin-top:.75rem;text-align:center}
+.auth-ok{color:var(--success);background:rgba(96,213,160,.08);border:1px solid rgba(96,213,160,.2)}
+.auth-err{color:var(--danger);background:rgba(245,96,96,.08);border:1px solid rgba(245,96,96,.2)}
+.auth-pending{color:var(--muted2);background:var(--surface2);border:1px solid var(--border)}
+
+/* CHECK-IN */
+.checkin-title{font-size:30px;font-weight:800;line-height:1.1;margin-bottom:.3rem}
+.checkin-sub{font-size:13px;color:var(--muted2);font-family:var(--font-mono);margin-bottom:2rem}
+.section-divider{font-size:10px;font-family:var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem;padding-bottom:.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.section-divider span{background:rgba(96,213,245,.1);color:var(--accent2);border:1px solid rgba(96,213,245,.2);padding:2px 8px;border-radius:20px;font-size:9px}
+.garmin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem}
+.garmin-field{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.garmin-label{font-size:10px;font-family:var(--font-mono);color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem}
+.garmin-input{width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--accent);padding:0}
+.garmin-input::placeholder{color:var(--border);font-size:18px}
+.garmin-unit{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
+/* Sleep hrs/mins */
+.sleep-field{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.sleep-hm-row{display:flex;gap:8px;align-items:flex-end}
+.sleep-hm-wrap{flex:1}
+.sleep-hm-wrap input{width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--accent);padding:0}
+.sleep-hm-wrap input::placeholder{color:var(--border);font-size:18px}
+.sleep-hm-sep{font-size:18px;color:var(--muted);font-family:var(--font-mono);padding-bottom:2px}
+.sleep-hm-unit{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
+.select-wrap{position:relative;margin-bottom:1.5rem}
+.select-wrap::after{content:'↓';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;font-family:var(--font-mono)}
+.readiness-select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:10px 12px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.readiness-select:focus{border-color:rgba(200,245,96,.3)}
+.fallback-toggle{font-size:11px;font-family:var(--font-mono);color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:1rem;background:none;border:none;padding:0}
+.fallback-toggle:hover{color:var(--muted2)}
+.fallback-section{display:none;margin-bottom:1rem}
+.fallback-section.open{display:block}
+.metric-block{margin-bottom:1.5rem}
+.metric-label{font-size:11px;font-family:var(--font-mono);color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center}
+.metric-value{font-size:26px;font-weight:700;color:var(--accent);font-family:var(--font-mono)}
+.sleep-input{display:flex;align-items:center;gap:14px}
+.sleep-input input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none}
+.sleep-input input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 0 4px rgba(200,245,96,.15)}
+.star-row{display:flex;gap:8px}
+.star-btn{width:52px;height:52px;border-radius:10px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--muted);font-family:var(--font-mono)}
+.star-btn.active{border-color:var(--accent);background:rgba(200,245,96,.08);color:var(--accent)}
+.star-btn:hover{border-color:var(--muted2);color:var(--text)}
+
+/* BRIEFING */
+.back-btn{font-size:11px;font-family:var(--font-mono);color:var(--muted);background:none;border:none;cursor:pointer;padding:0;margin-bottom:1.25rem;display:flex;align-items:center;gap:6px;transition:color .15s}
+.back-btn:hover{color:var(--text)}
+.briefing-title{font-size:26px;font-weight:800;line-height:1.1;margin-bottom:.25rem}
+.brief-meta{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.25rem}
+.status-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.5rem}
+.chip{font-size:10px;font-family:var(--font-mono);padding:4px 10px;border-radius:20px;border:1px solid;white-space:nowrap}
+.chip-garmin{border-color:rgba(96,213,245,.3);color:var(--accent2);background:rgba(96,213,245,.07)}
+.chip-energy{border-color:rgba(200,245,96,.3);color:var(--accent);background:rgba(200,245,96,.07)}
+.chip-ready-prime{border-color:rgba(96,208,160,.3);color:var(--success);background:rgba(96,208,160,.07)}
+.chip-ready-moderate{border-color:rgba(245,166,35,.3);color:var(--warn);background:rgba(245,166,35,.07)}
+.chip-ready-low{border-color:rgba(245,96,96,.3);color:var(--danger);background:rgba(245,96,96,.07)}
+.loading-state{padding:3.5rem 0;text-align:center}
+.loading-dots{display:flex;justify-content:center;gap:8px;margin-bottom:1.25rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.15;transform:scale(.75)}50%{opacity:1;transform:scale(1)}}
+.loading-label{font-size:12px;font-family:var(--font-mono);color:var(--muted)}
+.error-state{padding:1.5rem;background:rgba(245,96,96,.06);border:1px solid rgba(245,96,96,.2);border-radius:var(--r);font-size:12px;font-family:var(--font-mono);color:var(--danger);line-height:1.6;display:none}
+.briefing-content{display:none}
+.b-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:.85rem}
+.b-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem}
+.b-tag{font-size:9px;font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:20px;border:1px solid}
+.tag-readiness{color:var(--accent2);border-color:rgba(96,213,245,.3);background:rgba(96,213,245,.07)}
+.tag-training{color:var(--accent);border-color:rgba(200,245,96,.3);background:rgba(200,245,96,.07)}
+.tag-nutrition{color:var(--warn);border-color:rgba(245,166,35,.3);background:rgba(245,166,35,.07)}
+.tag-focus{color:var(--accent3);border-color:rgba(208,160,255,.3);background:rgba(208,160,255,.07)}
+.b-body{font-size:14px;line-height:1.7;color:var(--text)}
+.b-body strong{color:var(--accent);font-weight:600}
+.b-body em{color:var(--muted2);font-style:normal;font-size:12px;font-family:var(--font-mono)}
+.b-headline{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:.6rem;line-height:1.3}
+.macro-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:.85rem 0}
+.macro-cell{background:var(--surface2);border-radius:8px;padding:.75rem .5rem;text-align:center;border:1px solid var(--border)}
+.macro-num{font-size:18px;font-weight:700;font-family:var(--font-mono);color:var(--warn)}
+.macro-label{font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+.hrv-bar{margin:.75rem 0;background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--border)}
+.hrv-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .8s ease}
+.cached-badge{font-size:10px;font-family:var(--font-mono);color:var(--success);background:rgba(96,213,160,.08);border:1px solid rgba(96,213,160,.2);padding:3px 10px;border-radius:20px}
+.done-banner{background:rgba(200,245,96,.05);border:1px solid rgba(200,245,96,.15);border-radius:var(--r);padding:1rem 1.25rem;margin-top:1.25rem;font-size:12px;color:var(--muted2);font-family:var(--font-mono);line-height:1.6}
+.done-banner strong{color:var(--accent)}
+.regen-btn{font-size:11px;font-family:var(--font-mono);color:var(--muted2);background:transparent;border:1px solid var(--border);padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .15s}
+.regen-btn:hover{color:var(--text);border-color:var(--muted2)}
+.settings-link{position:fixed;bottom:1.5rem;right:1.5rem;width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);transition:all .15s;z-index:10}
+.settings-link:hover{color:var(--text);border-color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="logo">Performance OS · Alex</span>
+    <span class="day-tag" id="day-tag">—</span>
+  </div>
+
+  <!-- SETUP -->
+  <div class="screen active" id="screen-setup">
+    <div class="setup-title">Welcome,<br>Alex.</div>
+    <div class="setup-sub">One-time setup. Your data syncs to<br>your Google Drive — private and permanent.</div>
+    <div class="setup-card">
+      <div class="setup-step"><div class="step-num">1</div><div class="step-text">Enter your Anthropic API key from <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div></div>
+      <div class="setup-step"><div class="step-num">2</div><div class="step-text">Enter your Google Client ID from <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → Credentials</div></div>
+      <div class="setup-step"><div class="step-num">3</div><div class="step-text">Enter your Strava Refresh Token from strava.com/settings/api</div></div>
+      <div class="setup-step"><div class="step-num">4</div><div class="step-text">Sign in with Google — data syncs automatically across all devices forever</div></div>
+      <div class="field-label">Anthropic API Key</div>
+      <input class="key-input" type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+      <div class="field-label">Google Client ID</div>
+      <input class="key-input" type="text" id="client-id-input" placeholder="123456789-abc....apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+      <div class="field-label">Strava Refresh Token</div>
+      <input class="key-input" type="password" id="strava-token-input" placeholder="your strava refresh token..." autocomplete="off" spellcheck="false">
+    </div>
+    <button class="cta-btn" onclick="saveSetup()">Save and connect Google →</button>
+    <div id="setup-status"></div>
+  </div>
+
+  <!-- GOOGLE AUTH -->
+  <div class="screen" id="screen-auth">
+    <div class="setup-title">Connect<br>Google Drive</div>
+    <div class="setup-sub">Your check-ins and briefings sync here.<br>One tap — never asked again.</div>
+    <div class="setup-card">
+      <p>This saves your daily data to a private file in your Google Drive called <strong style="color:var(--text)">performance-os-data.json</strong>. Only you can see it.</p>
+      <p>Approve Drive access when Google prompts you.</p>
+    </div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="auth-status" class="auth-status auth-pending" style="display:none"></div>
+  </div>
+
+  <!-- CHECK-IN -->
+  <div class="screen" id="screen-checkin">
+    <div class="checkin-title">Morning<br>check-in</div>
+    <div class="checkin-sub">Glance at your Garmin. 20 seconds.</div>
+    <div class="section-divider">Garmin data <span>from your watch</span></div>
+    <div class="garmin-grid">
+      <div class="garmin-field">
+        <div class="garmin-label">Sleep Score</div>
+        <input class="garmin-input" type="number" id="g-sleep-score" placeholder="—" min="0" max="100" oninput="checkReady()">
+        <div class="garmin-unit">out of 100</div>
+      </div>
+      <div class="garmin-field">
+        <div class="garmin-label">Body Battery</div>
+        <input class="garmin-input" type="number" id="g-body-battery" placeholder="—" min="0" max="100" oninput="checkReady()">
+        <div class="garmin-unit">out of 100</div>
+      </div>
+      <div class="garmin-field">
+        <div class="garmin-label">HRV Status</div>
+        <input class="garmin-input" type="number" id="g-hrv" placeholder="—" min="0" max="120" oninput="checkReady()">
+        <div class="garmin-unit">7-day avg (ms)</div>
+      </div>
+      <!-- SLEEP DURATION — hrs & mins -->
+      <div class="sleep-field">
+        <div class="garmin-label">Sleep Duration</div>
+        <div class="sleep-hm-row">
+          <div class="sleep-hm-wrap">
+            <input type="number" id="g-sleep-hrs" placeholder="8" min="0" max="12" oninput="checkReady()">
+            <div class="sleep-hm-unit">hrs</div>
+          </div>
+          <div class="sleep-hm-sep">:</div>
+          <div class="sleep-hm-wrap">
+            <input type="number" id="g-sleep-mins" placeholder="30" min="0" max="59" oninput="checkReady()">
+            <div class="sleep-hm-unit">mins</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section-divider" style="margin-bottom:.85rem">Training Readiness <span>from Garmin</span></div>
+    <div class="select-wrap">
+      <select class="readiness-select" id="g-readiness" onchange="checkReady()">
+        <option value="">Select your Training Readiness...</option>
+        <option value="prime">Prime — ready for a hard session</option>
+        <option value="high">High — well recovered</option>
+        <option value="moderate">Moderate — maintain current load</option>
+        <option value="low">Low — lighter session advised</option>
+        <option value="poor">Poor — rest or very easy only</option>
+      </select>
+    </div>
+    <button class="fallback-toggle" id="fallback-toggle" onclick="toggleFallback()">+ No Garmin today? Use manual check-in</button>
+    <div class="fallback-section" id="fallback-section">
+      <div class="section-divider">Manual fallback</div>
+      <div class="metric-block">
+        <div class="metric-label"><span>Hours slept</span><span class="metric-value" id="sleep-val">7.0</span></div>
+        <div class="sleep-input">
+          <input type="range" id="sleep-slider" min="3" max="10" step="0.5" value="7"
+            oninput="document.getElementById('sleep-val').textContent=parseFloat(this.value).toFixed(1)">
+        </div>
+      </div>
+      <div class="metric-block">
+        <div class="metric-label"><span>Sleep quality</span></div>
+        <div class="star-row" id="quality-row">
+          <button class="star-btn" data-v="1" onclick="setRating('quality',1)">1</button>
+          <button class="star-btn" data-v="2" onclick="setRating('quality',2)">2</button>
+          <button class="star-btn" data-v="3" onclick="setRating('quality',3)">3</button>
+          <button class="star-btn" data-v="4" onclick="setRating('quality',4)">4</button>
+          <button class="star-btn" data-v="5" onclick="setRating('quality',5)">5</button>
+        </div>
+      </div>
+      <div class="metric-block">
+        <div class="metric-label"><span>Morning energy</span></div>
+        <div class="star-row" id="energy-row">
+          <button class="star-btn" data-v="1" onclick="setRating('energy',1)">1</button>
+          <button class="star-btn" data-v="2" onclick="setRating('energy',2)">2</button>
+          <button class="star-btn" data-v="3" onclick="setRating('energy',3)">3</button>
+          <button class="star-btn" data-v="4" onclick="setRating('energy',4)">4</button>
+          <button class="star-btn" data-v="5" onclick="setRating('energy',5)">5</button>
+        </div>
+      </div>
+    </div>
+    <button class="cta-btn" id="gen-btn" onclick="generateBriefing()" disabled>Get today's briefing →</button>
+  </div>
+
+  <!-- BRIEFING -->
+  <div class="screen" id="screen-briefing">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <button class="back-btn" style="margin-bottom:0" onclick="showScreen('checkin')">← edit check-in</button>
+      <button class="regen-btn" id="regen-btn" onclick="forceRegenerate()">↺ regenerate</button>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.25rem">
+      <div class="briefing-title">Daily briefing</div>
+      <span class="cached-badge" id="cached-badge" style="display:none">cached</span>
+    </div>
+    <div class="brief-meta" id="brief-meta">—</div>
+    <div class="status-chips" id="status-chips"></div>
+    <div class="loading-state" id="loading-state">
+      <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="loading-label" id="loading-label">Generating your briefing...</div>
+    </div>
+    <div class="error-state" id="error-state"></div>
+    <div class="briefing-content" id="briefing-content"></div>
+  </div>
+</div>
+
+<button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
+
+<script>
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const now=new Date();
+const dayName=DAYS[now.getDay()];
+const dateStr=now.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});
+const todayKey=now.toISOString().split('T')[0];
+document.getElementById('day-tag').textContent=dayName;
+
+const SK={apiKey:'pos_api_key',clientId:'pos_client_id',accessToken:'pos_access_token',tokenExpiry:'pos_token_expiry',fileId:'pos_drive_file_id',data:'pos_data',stravaToken:'pos_strava_refresh_token'};
+const STATE={garmin:{sleepScore:null,bodyBattery:null,hrv:null,sleepHours:null,readiness:''},manual:{sleep:7,quality:0,energy:0}};
+
+function ls(k){return localStorage.getItem(k)}
+function lss(k,v){localStorage.setItem(k,v)}
+function showScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+n).classList.add('active');}
+
+// ── SLEEP HRS/MINS → DECIMAL ──
+function getSleepDecimal(){
+  const h=parseInt(document.getElementById('g-sleep-hrs').value)||0;
+  const m=parseInt(document.getElementById('g-sleep-mins').value)||0;
+  if(h===0&&m===0) return null;
+  return Math.round((h+(m/60))*10)/10;
+}
+
+// ── SETUP ──
+function saveSetup(){
+  const ak=document.getElementById('api-key-input').value.trim();
+  const cid=document.getElementById('client-id-input').value.trim();
+  const st=document.getElementById('strava-token-input').value.trim();
+  if(!ak.startsWith('sk-ant-')){alert('Anthropic key should start with sk-ant-');return;}
+  if(!cid.includes('.apps.googleusercontent.com')){alert('Google Client ID should end with .apps.googleusercontent.com');return;}
+  if(!st){alert('Please enter your Strava Refresh Token');return;}
+  lss(SK.apiKey,ak);lss(SK.clientId,cid);lss(SK.stravaToken,st);
+  showScreen('auth');initGoogleAuth();
+}
+
+// ── GOOGLE AUTH ──
+let tokenClient;
+function initGoogleAuth(){
+  const cid=ls(SK.clientId);if(!cid)return;
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:cid,
+    scope:'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
+    callback:(resp)=>{
+      if(resp.error){showAuthStatus('Sign in failed: '+resp.error,'err');return;}
+      lss(SK.accessToken,resp.access_token);
+      lss(SK.tokenExpiry,Date.now()+(resp.expires_in*1000));
+      showAuthStatus('Connected to Google Drive ✓','ok');
+      setTimeout(()=>loadFromDrive().then(()=>showScreen('checkin')),800);
+    }
+  });
+}
+function signInWithGoogle(){
+  if(!tokenClient)initGoogleAuth();
+  showAuthStatus('Opening Google sign in...','pending');
+  document.getElementById('auth-status').style.display='block';
+  tokenClient.requestAccessToken({prompt:'consent'});
+}
+function showAuthStatus(msg,type){
+  const el=document.getElementById('auth-status');
+  el.style.display='block';el.className='auth-status auth-'+type;el.textContent=msg;
+}
+async function getValidToken(){
+  const expiry=parseInt(ls(SK.tokenExpiry)||'0');
+  if(Date.now()<expiry-60000)return ls(SK.accessToken);
+  return new Promise((resolve)=>{
+    if(!tokenClient)initGoogleAuth();
+    tokenClient.callback=(resp)=>{
+      if(resp.error){resolve(null);return;}
+      lss(SK.accessToken,resp.access_token);
+      lss(SK.tokenExpiry,Date.now()+(resp.expires_in*1000));
+      resolve(resp.access_token);
+    };
+    tokenClient.requestAccessToken({prompt:''});
+  });
+}
+
+// ── GOOGLE DRIVE ──
+async function loadFromDrive(){
+  try{
+    const token=await getValidToken();if(!token)return;
+    let fileId=ls(SK.fileId);
+    if(!fileId){
+      const s=await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27performance-os-data.json%27&fields=files(id)',{headers:{Authorization:'Bearer '+token}});
+      const r=await s.json();
+      if(r.files&&r.files.length>0){fileId=r.files[0].id;lss(SK.fileId,fileId);}
+    }
+    if(fileId){
+      const fr=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{Authorization:'Bearer '+token}});
+      const data=await fr.json();
+      lss(SK.data,JSON.stringify(data));
+      restoreToday(data);
+    }
+  }catch(e){console.log('Drive load:',e);}
+}
+async function saveToDrive(data){
+  try{
+    const token=await getValidToken();if(!token)return false;
+    let fileId=ls(SK.fileId);
+    const body=JSON.stringify(data,null,2);
+    const meta={name:'performance-os-data.json',parents:['appDataFolder']};
+    const boundary='bound';
+    const buildBody=(m)=>`--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(m)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+    let res;
+    if(fileId){
+      res=await fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=multipart',{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:buildBody({name:'performance-os-data.json'})});
+    }else{
+      res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},body:buildBody(meta)});
+    }
+    const saved=await res.json();
+    if(saved.id)lss(SK.fileId,saved.id);
+    return true;
+  }catch(e){console.log('Drive save:',e);return false;}
+}
+function getAppData(){try{return JSON.parse(ls(SK.data)||'{}');}catch{return {};}}
+
+function restoreToday(data){
+  const today=data[todayKey];if(!today)return;
+  const g=today.garmin||{};const m=today.manual||{};
+  if(g.sleepScore)document.getElementById('g-sleep-score').value=g.sleepScore;
+  if(g.bodyBattery)document.getElementById('g-body-battery').value=g.bodyBattery;
+  if(g.hrv)document.getElementById('g-hrv').value=g.hrv;
+  // Restore hrs/mins from stored decimal
+  if(g.sleepHours){
+    const h=Math.floor(g.sleepHours);
+    const m2=Math.round((g.sleepHours-h)*60);
+    document.getElementById('g-sleep-hrs').value=h;
+    document.getElementById('g-sleep-mins').value=m2;
+  }
+  if(g.readiness)document.getElementById('g-readiness').value=g.readiness;
+  Object.assign(STATE.garmin,g);
+  if(m.sleep){document.getElementById('sleep-slider').value=m.sleep;document.getElementById('sleep-val').textContent=parseFloat(m.sleep).toFixed(1);}
+  if(m.quality)setRating('quality',m.quality);
+  if(m.energy)setRating('energy',m.energy);
+  Object.assign(STATE.manual,m);
+  checkReady();
+  // If today's briefing already exists — show it instantly, no API call
+  if(today.briefing){
+    const nutType=getNutritionType();
+    const macros=MACROS[nutType];
+    buildBriefingScreen(today.briefing,macros,g,true);
+    showScreen('briefing');
+  }
+}
+
+// ── CHECK-IN ──
+function toggleFallback(){
+  const s=document.getElementById('fallback-section');
+  const open=s.classList.toggle('open');
+  document.getElementById('fallback-toggle').textContent=open?'− Hide manual check-in':'+ No Garmin today? Use manual check-in';
+  checkReady();
+}
+function setRating(type,val){
+  STATE.manual[type]=val;
+  document.getElementById(type+'-row').querySelectorAll('.star-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.v)<=val));
+  checkReady();
+}
+function checkReady(){
+  const g=STATE.garmin;
+  g.sleepScore=parseFloat(document.getElementById('g-sleep-score').value)||null;
+  g.bodyBattery=parseFloat(document.getElementById('g-body-battery').value)||null;
+  g.hrv=parseFloat(document.getElementById('g-hrv').value)||null;
+  g.sleepHours=getSleepDecimal();
+  g.readiness=document.getElementById('g-readiness').value;
+  const fallbackOpen=document.getElementById('fallback-section').classList.contains('open');
+  const ready=fallbackOpen?(STATE.manual.quality>0&&STATE.manual.energy>0):(g.sleepScore!==null||g.bodyBattery!==null||g.readiness!=='');
+  document.getElementById('gen-btn').disabled=!ready;
+}
+
+// ── SETTINGS ──
+function showSettings(){
+  const choice=confirm('Settings\n\nOK = Reset all settings\nCancel = Do nothing');
+  if(choice){[SK.apiKey,SK.clientId,SK.accessToken,SK.tokenExpiry,SK.fileId].forEach(k=>localStorage.removeItem(k));showScreen('setup');}
+}
+
+// ── TRAINING ──
+function getTrainingDay(){
+  const map={Monday:'Push session — bench press focus (lunchtime)',Tuesday:'Easy Zone 2 run — target 132-148 bpm (morning preferred)',Wednesday:'Pull session — muscle up progression (lunchtime)',Thursday:'Interval run — Zone 3/4, 165-190 bpm (morning preferred)',Friday:'Rest / active recovery',Saturday:'Long run (morning) + legs session (2-3 hrs later)',Sunday:'Yoga + mobility 30-45 min + meal prep'};
+  return map[dayName]||'Rest day';
+}
+function getNutritionType(){
+  if(['Saturday','Thursday'].includes(dayName))return 'double';
+  if(['Friday','Sunday'].includes(dayName))return 'rest';
+  return 'moderate';
+}
+const MACROS={rest:{cal:2400,protein:160,carbs:220,fat:75},moderate:{cal:2800,protein:175,carbs:290,fat:80},double:{cal:3200,protein:185,carbs:360,fat:85}};
+
+// ── BUILD CHIPS ──
+function buildChips(g,m,fallbackOpen){
+  let chips='';
+  if(g.sleepScore)chips+=`<span class="chip chip-garmin">Sleep ${g.sleepScore}/100</span>`;
+  if(g.bodyBattery)chips+=`<span class="chip chip-energy">Battery ${g.bodyBattery}/100</span>`;
+  if(g.hrv)chips+=`<span class="chip chip-garmin">HRV ${g.hrv}ms</span>`;
+  if(g.sleepHours){const h=Math.floor(g.sleepHours);const mn=Math.round((g.sleepHours-h)*60);chips+=`<span class="chip chip-garmin">${h}h ${mn}m sleep</span>`;}
+  if(g.readiness){const cls=g.readiness==='prime'||g.readiness==='high'?'chip-ready-prime':g.readiness==='moderate'?'chip-ready-moderate':'chip-ready-low';chips+=`<span class="chip ${cls}">${g.readiness} readiness</span>`;}
+  if(fallbackOpen&&!chips)chips=`<span class="chip chip-energy">Energy ${m.energy}/5</span>`;
+  return chips;
+}
+
+
+// ── FETCH STRAVA RUNS ──
+async function fetchStravaRuns(){
+  try{
+    const refreshToken=ls(SK.stravaToken);
+    if(!refreshToken) return null;
+    const res=await fetch('/.netlify/functions/strava',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:refreshToken})
+    });
+    if(!res.ok) return null;
+    const data=await res.json();
+    if(data.new_refresh_token) lss(SK.stravaToken,data.new_refresh_token);
+    return data.runs||null;
+  }catch(e){
+    console.log('Strava fetch error:',e);
+    return null;
+  }
+}
+
+function formatStravaSection(runs){
+  if(!runs||runs.length===0) return '';
+  let s='RECENT RUNS (last '+runs.length+' from Strava):\n';
+  runs.forEach(r=>{
+    const pace=r.avg_pace_per_km?Math.floor(r.avg_pace_per_km)+':'+(Math.round((r.avg_pace_per_km%1)*60)).toString().padStart(2,'0')+'/km':'';
+    s+=`- ${r.date}: ${r.distance_km}km in ${r.duration_mins}min`;
+    if(r.avg_hr) s+=`, avg HR ${r.avg_hr}bpm`;
+    if(pace) s+=`, ${pace}`;
+    if(r.suffer_score) s+=`, effort ${r.suffer_score}`;
+    s+='\n';
+  });
+  // Weekly volume summary
+  const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+  const recentRuns=runs.filter(r=>r.date>=weekAgo);
+  const weeklyKm=recentRuns.reduce((sum,r)=>sum+r.distance_km,0);
+  if(weeklyKm>0) s+=`Weekly volume (last 7 days): ${Math.round(weeklyKm*10)/10}km across ${recentRuns.length} runs\n`;
+  return s;
+}
+
+// ── GENERATE ──
+async function generateBriefing(){
+  const g=STATE.garmin;
+  g.sleepHours=getSleepDecimal();
+  const m=STATE.manual;
+  const fallbackOpen=document.getElementById('fallback-section').classList.contains('open');
+  const nutType=getNutritionType();
+  const macros=MACROS[nutType];
+
+  // Save check-in data
+  const appData=getAppData();
+  appData[todayKey]={date:todayKey,garmin:g,manual:m,fallback:fallbackOpen};
+  lss(SK.data,JSON.stringify(appData));
+  saveToDrive(appData);
+
+  showScreen('briefing');
+  document.getElementById('brief-meta').textContent=dateStr+' · '+dayName;
+  document.getElementById('status-chips').innerHTML=buildChips(g,m,fallbackOpen);
+  document.getElementById('cached-badge').style.display='none';
+  document.getElementById('loading-state').style.display='block';
+  document.getElementById('error-state').style.display='none';
+  document.getElementById('briefing-content').style.display='none';
+
+  // Fetch Strava data — free, no API cost
+  document.getElementById('loading-label').textContent='Fetching your Strava runs...';
+  const stravaRuns=await fetchStravaRuns();
+  const stravaSection=formatStravaSection(stravaRuns);
+
+  // Add Strava chip if data available
+  if(stravaRuns&&stravaRuns.length>0){
+    const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+    const recentCount=stravaRuns.filter(r=>r.date>=weekAgo).length;
+    document.getElementById('status-chips').innerHTML+=`<span class="chip chip-garmin">Strava: ${stravaRuns.length} runs loaded</span>`;
+  }
+
+  let dataSection='';
+  if(g.sleepScore||g.bodyBattery||g.hrv||g.sleepHours||g.readiness){
+    dataSection='GARMIN DATA:\n';
+    if(g.sleepScore!==null)dataSection+=`- Sleep Score: ${g.sleepScore}/100\n`;
+    if(g.sleepHours!==null){const h=Math.floor(g.sleepHours);const mn=Math.round((g.sleepHours-h)*60);dataSection+=`- Sleep Duration: ${h}h ${mn}m (${g.sleepHours} hrs)\n`;}
+    if(g.hrv!==null)dataSection+=`- HRV Status (7-day avg): ${g.hrv}ms\n`;
+    if(g.bodyBattery!==null)dataSection+=`- Body Battery on waking: ${g.bodyBattery}/100\n`;
+    if(g.readiness)dataSection+=`- Training Readiness: ${g.readiness}\n`;
+  }
+  if(fallbackOpen)dataSection+=`\nMANUAL CHECK-IN:\n- Hours slept: ${parseFloat(document.getElementById('sleep-slider').value).toFixed(1)}\n- Sleep quality: ${m.quality}/5\n- Morning energy: ${m.energy}/5\n`;
+
+  const prompt=`You are Alex's personal performance coach AI. Today is ${dayName}, ${dateStr}. Alex is 24, based in Singapore. Heat and humidity always factor into running advice.
+
+${dataSection}
+${stravaSection}
+TODAY'S SESSION: ${getTrainingDay()}
+NUTRITION TYPE: ${nutType} training day
+MACROS: ${macros.cal} kcal | ${macros.protein}g protein | ${macros.carbs}g carbs | ${macros.fat}g fat
+
+ALEX'S PROFILE:
+Goals: 1) Sub-19min 5K (current 19:35) 2) 100kg bench (~88-92kg e1RM, 75kg x6-8) 3) Muscle ups (10-15 pull ups now) 4) Sub-1:30 HM 5) Sub-3:30 marathon
+Zones: Z1<131, Z2=132-164 (easy 132-148), Z3=165-180, Z4=181-196, Z5=196+
+Push: bench, OHP, incline DB, lateral raises, tricep dips
+Pull: chest-to-bar pull ups, archer pull ups, slow negatives, barbell rows, face pulls, curls (no weighted pull ups)
+Legs: squats, RDLs, Bulgarian split squats, calf raises, hip/glute work
+Singapore: HR-based only, before 7am preferred, electrolytes daily, cold shower before hard sessions
+If body battery <40 or HRV low: reduce intensity regardless of scheduled session
+Use Strava run data to assess training load, HR zone adherence, and weekly volume vs target ramp-up plan
+
+Respond ONLY as a JSON object, no markdown, no backticks:
+{"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing"},"focus":"one sharp sentence"}
+
+WORKOUT RULES: Mon=full push, bench ~82-85% e1RM. Wed=full pull, CTB pull ups max reps, negatives 4-5sec. Sat=run segments then legs. Tue=Z2 broken into warmup/main/cooldown. Thu=full intervals warmup+work+recovery+cooldown. Fri=2-3 light recovery items. Sun=6-8 yoga poses with hold times for runner/lifter. Scale down if readiness low.`;
+
+  const msgs=['Generating your briefing...','Calibrating session...','Almost ready...'];
+  let li=0;
+  const iv=setInterval(()=>{li=(li+1)%msgs.length;document.getElementById('loading-label').textContent=msgs[li];},1800);
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':ls(SK.apiKey),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+    });
+    clearInterval(iv);
+    if(!res.ok){const err=await res.json();throw new Error(err.error?.message||'API error '+res.status);}
+    const data=await res.json();
+    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
+    const brief=JSON.parse(raw);
+    // Save briefing — prevents regeneration tomorrow
+    const appData2=getAppData();
+    appData2[todayKey].briefing=brief;
+    if(stravaRuns) appData2[todayKey].stravaRuns=stravaRuns;
+    lss(SK.data,JSON.stringify(appData2));
+    saveToDrive(appData2);
+    buildBriefingScreen(brief,macros,g,false);
+  }catch(e){
+    clearInterval(iv);
+    document.getElementById('loading-state').style.display='none';
+    const el=document.getElementById('error-state');
+    el.style.display='block';
+    let msg='Something went wrong: '+e.message;
+    if(e.message.includes('401'))msg='API key rejected. Tap ⚙ to reset.';
+    if(e.message.includes('429'))msg='Rate limit — wait a minute and try again.';
+    el.textContent=msg;
+  }
+}
+
+// ── RENDER BRIEFING ──
+function buildBriefingScreen(b,macros,g,cached){
+  document.getElementById('loading-state').style.display='none';
+  document.getElementById('brief-meta').textContent=dateStr+' · '+dayName;
+  // Rebuild chips from saved garmin data
+  document.getElementById('status-chips').innerHTML=buildChips(g,STATE.manual,false);
+  if(cached)document.getElementById('cached-badge').style.display='inline-block';
+
+  const hrvW=g.hrv?Math.min(100,Math.round((g.hrv/80)*100)):0;
+  const heatNote=b.training.heat_note?`<br><br><em>☀ ${b.training.heat_note}</em>`:'';
+  const workoutRows=(b.training.workout&&b.training.workout.length)?`
+    <div style="border-top:1px solid var(--border);padding-top:.85rem;margin-top:.85rem">
+      ${b.training.workout.map((w,i)=>`
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:.6rem 0;${i>0?'border-top:1px solid var(--border)':''}">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">${w.exercise}</div>
+          ${w.notes?`<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);line-height:1.5">${w.notes}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${w.sets?`<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">${w.sets}</div>`:''}
+          ${w.reps?`<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">${w.reps}</div>`:''}
+          ${w.load?`<div style="font-size:12px;font-family:var(--font-mono);color:var(--accent);font-weight:500">${w.load}</div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>`:'';
+
+  const container=document.getElementById('briefing-content');
+  container.innerHTML=`
+    <div class="b-card">
+      <div class="b-card-header"><span class="b-tag tag-readiness">Readiness</span></div>
+      <div class="b-body">${b.readiness}</div>
+      ${g.hrv?`<div class="hrv-bar"><div class="hrv-fill" style="width:${hrvW}%"></div></div><div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">HRV ${g.hrv}ms</div>`:''}
+    </div>
+    <div class="b-card">
+      <div class="b-card-header"><span class="b-tag tag-training">Training</span></div>
+      <div class="b-headline">${b.training.headline}</div>
+      <div class="b-body">${b.training.details}${heatNote}</div>
+      ${workoutRows}
+    </div>
+    <div class="b-card">
+      <div class="b-card-header"><span class="b-tag tag-nutrition">Nutrition</span></div>
+      <div class="macro-grid">
+        <div class="macro-cell"><div class="macro-num">${macros.cal}</div><div class="macro-label">kcal</div></div>
+        <div class="macro-cell"><div class="macro-num">${macros.protein}g</div><div class="macro-label">protein</div></div>
+        <div class="macro-cell"><div class="macro-num">${macros.carbs}g</div><div class="macro-label">carbs</div></div>
+        <div class="macro-cell"><div class="macro-num">${macros.fat}g</div><div class="macro-label">fat</div></div>
+      </div>
+      <div class="b-body">${b.nutrition.timing}</div>
+    </div>
+    <div class="b-card">
+      <div class="b-card-header"><span class="b-tag tag-focus">Today's focus</span></div>
+      <div class="b-body"><strong>${b.focus}</strong></div>
+    </div>
+    <div class="done-banner">${cached?'Loaded from cache — <strong>no API call used.</strong>':'Saved to Google Drive. <strong>Opens instantly tomorrow.</strong>'}</div>
+  `;
+  container.style.display='block';
+}
+
+// ── FORCE REGENERATE (dev/testing tool) ──
+async function forceRegenerate(){
+  const appData=getAppData();
+  if(appData[todayKey]){
+    delete appData[todayKey].briefing;
+    lss(SK.data,JSON.stringify(appData));
+    saveToDrive(appData);
+  }
+  // Restore garmin state from saved data
+  if(appData[todayKey]){
+    const g=appData[todayKey].garmin||{};
+    Object.assign(STATE.garmin,g);
+  }
+  await generateBriefing();
+}
+
+// ── INIT ──
+async function init(){
+  const apiKey=ls(SK.apiKey);
+  const clientId=ls(SK.clientId);
+  if(!apiKey||!clientId){showScreen('setup');return;}
+  const token=ls(SK.accessToken);
+  const expiry=parseInt(ls(SK.tokenExpiry)||'0');
+  if(!token||Date.now()>expiry){
+    showScreen('auth');
+    const wait=setInterval(()=>{if(typeof google!=='undefined'){clearInterval(wait);initGoogleAuth();}},200);
+    return;
+  }
+  await loadFromDrive();
+  // Only show checkin if briefing wasn't already loaded by restoreToday
+  if(document.querySelector('.screen.active').id!=='screen-briefing'){
+    showScreen('checkin');
+  }
+}
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
