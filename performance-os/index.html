@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Performance OS">
@@ -133,6 +134,43 @@ body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-i
 .done-banner strong{color:var(--accent)}
 .regen-btn{font-size:11px;font-family:var(--font-mono);color:var(--muted2);background:transparent;border:1px solid var(--border);padding:6px 12px;border-radius:8px;cursor:pointer;transition:all .15s}
 .regen-btn:hover{color:var(--text);border-color:var(--muted2)}
+
+.tab-bar{position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:100;max-width:480px;margin:0 auto}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;transition:color .15s;padding-bottom:env(safe-area-inset-bottom)}
+.tab-btn.active{color:var(--accent)}
+.tab-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.app{padding-bottom:5rem}
+
+/* LIFT LOGGER */
+.log-title{font-size:26px;font-weight:800;line-height:1.1;margin-bottom:.25rem}
+.log-meta{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem}
+.exercise-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:.75rem;overflow:hidden}
+.exercise-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;cursor:pointer}
+.exercise-name{font-size:14px;font-weight:600;color:var(--text)}
+.exercise-meta{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:2px}
+.exercise-chevron{color:var(--muted);font-size:16px;transition:transform .2s;font-family:var(--font-mono)}
+.exercise-chevron.open{transform:rotate(180deg)}
+.exercise-body{display:none;padding:0 1.25rem 1rem;border-top:1px solid var(--border)}
+.exercise-body.open{display:block}
+.set-row{display:grid;grid-template-columns:32px 1fr 1fr auto;gap:8px;align-items:center;margin-top:.75rem}
+.set-num{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-align:center}
+.set-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--font-mono);font-size:14px;outline:none;width:100%;text-align:center;transition:border-color .15s}
+.set-input:focus{border-color:rgba(200,245,96,.4)}
+.set-input::placeholder{color:var(--muted)}
+.set-delete{color:var(--muted);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;font-family:var(--font-mono)}
+.set-delete:hover{color:var(--danger)}
+.set-headers{display:grid;grid-template-columns:32px 1fr 1fr auto;gap:8px;margin-top:.5rem}
+.set-header-label{font-size:9px;font-family:var(--font-mono);color:var(--muted);text-align:center;letter-spacing:.06em;text-transform:uppercase}
+.add-set-btn{width:100%;margin-top:.75rem;padding:8px;background:transparent;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .15s}
+.add-set-btn:hover{border-color:var(--accent);color:var(--accent)}
+.prev-load{font-size:10px;font-family:var(--font-mono);color:var(--muted2);margin-top:.5rem}
+.prev-load strong{color:var(--accent2)}
+.save-session-btn{width:100%;padding:16px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--r);font-size:15px;font-weight:700;font-family:var(--font-display);cursor:pointer;margin-top:1rem;transition:opacity .15s}
+.save-session-btn:hover{opacity:.85}
+.save-banner{background:rgba(200,245,96,.05);border:1px solid rgba(200,245,96,.15);border-radius:var(--r);padding:1rem 1.25rem;margin-top:1rem;font-size:12px;color:var(--muted2);font-family:var(--font-mono);display:none}
+.save-banner strong{color:var(--accent)}
+.rest-day-note{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;text-align:center}
+.rest-day-note p{font-size:13px;font-family:var(--font-mono);color:var(--muted);line-height:1.7}
 .settings-link{position:fixed;bottom:1.5rem;right:1.5rem;width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--muted);transition:all .15s;z-index:10}
 .settings-link:hover{color:var(--text);border-color:var(--muted)}
 </style>
@@ -280,6 +318,28 @@ body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-i
     <div class="error-state" id="error-state"></div>
     <div class="briefing-content" id="briefing-content"></div>
   </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar" id="tab-bar" style="display:none">
+    <button class="tab-btn active" id="tab-briefing" onclick="switchTab('briefing')">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Briefing
+    </button>
+    <button class="tab-btn" id="tab-log" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M12 12h.01M12 16h.01M8 12h.01M8 16h.01M16 12h.01"/></svg>
+      Log
+    </button>
+  </div>
+
+  <!-- LIFT LOGGER SCREEN -->
+  <div class="screen" id="screen-log">
+    <div class="log-title">Session<br>logger</div>
+    <div class="log-meta" id="log-meta">—</div>
+    <div id="log-content"></div>
+    <button class="save-session-btn" id="save-session-btn" onclick="saveSession()" style="display:none">Save session →</button>
+    <div class="save-banner" id="save-banner"></div>
+  </div>
+
 </div>
 
 <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
@@ -566,6 +626,18 @@ async function generateBriefing(){
     if(g.bodyBattery!==null)dataSection+=`- Body Battery on waking: ${g.bodyBattery}/100\n`;
     if(g.readiness)dataSection+=`- Training Readiness: ${g.readiness}\n`;
   }
+  // Add last session data to prompt
+  const appData0=getAppData();
+  const lastSession=getPreviousSession(dayName,appData0);
+  if(lastSession&&['Monday','Wednesday','Saturday'].includes(dayName)){
+    dataSection+='\nLAST '+dayName.toUpperCase()+' SESSION:\n';
+    Object.values(lastSession).forEach(ex=>{
+      if(ex.sets&&ex.sets.length>0){
+        dataSection+=`- ${ex.name}: ${ex.sets.map(s=>s.weight?s.weight+'kg x'+s.reps:s.reps+' reps').join(', ')}\n`;
+      }
+    });
+  }
+
   if(fallbackOpen)dataSection+=`\nMANUAL CHECK-IN:\n- Hours slept: ${parseFloat(document.getElementById('sleep-slider').value).toFixed(1)}\n- Sleep quality: ${m.quality}/5\n- Morning energy: ${m.energy}/5\n`;
 
   const prompt=`You are Alex's personal performance coach AI. Today is ${dayName}, ${dateStr}. Alex is 24, based in Singapore. Heat and humidity always factor into running advice.
@@ -585,6 +657,7 @@ Legs: squats, RDLs, Bulgarian split squats, calf raises, hip/glute work
 Singapore: HR-based only, before 7am preferred, electrolytes daily, cold shower before hard sessions
 If body battery <40 or HRV low: reduce intensity regardless of scheduled session
 Use Strava run data to assess training load, HR zone adherence, and weekly volume vs target ramp-up plan
+LAST LIFT SESSION DATA will be injected below if available — use it for progressive overload recommendations
 
 Respond ONLY as a JSON object, no markdown, no backticks:
 {"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing"},"focus":"one sharp sentence"}
@@ -681,6 +754,7 @@ function buildBriefingScreen(b,macros,g,cached){
     <div class="done-banner">${cached?'Loaded from cache — <strong>no API call used.</strong>':'Saved to Google Drive. <strong>Opens instantly tomorrow.</strong>'}</div>
   `;
   container.style.display='block';
+  showTabBar();
 }
 
 // ── FORCE REGENERATE (dev/testing tool) ──
@@ -697,6 +771,202 @@ async function forceRegenerate(){
     Object.assign(STATE.garmin,g);
   }
   await generateBriefing();
+}
+
+
+// ── TAB BAR ──
+function showTabBar(){document.getElementById('tab-bar').style.display='flex';}
+function hideTabBar(){document.getElementById('tab-bar').style.display='none';}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='briefing'){
+    const appData=getAppData();
+    const today=appData[todayKey];
+    if(today&&today.briefing){
+      const nutType=getNutritionType();
+      buildBriefingScreen(today.briefing,MACROS[nutType],today.garmin||{},true);
+      showScreen('briefing');
+    } else {
+      showScreen('checkin');
+    }
+  } else if(tab==='log'){
+    buildLogScreen();
+    showScreen('log');
+  }
+}
+
+// ── LIFT LOGGER ──
+const WORKOUTS={
+  Monday:[
+    {name:'Bench Press',target:'4 sets x 6-8 reps',key:'bench'},
+    {name:'Overhead Press',target:'3 sets x 8-10 reps',key:'ohp'},
+    {name:'Incline Dumbbell Press',target:'3 sets x 10-12 reps',key:'incline_db'},
+    {name:'Lateral Raises',target:'3 sets x 15 reps',key:'lateral_raises'},
+    {name:'Tricep Dips',target:'3 sets x 10-15 reps',key:'tricep_dips'}
+  ],
+  Wednesday:[
+    {name:'Chest-to-Bar Pull Ups',target:'4 sets x max reps',key:'ctb_pullups'},
+    {name:'Archer Pull Ups',target:'3 sets x 4-6 reps each side',key:'archer_pullups'},
+    {name:'Slow Negative Pull Ups',target:'3 sets x 5 reps (4-5 sec)',key:'slow_negatives'},
+    {name:'Barbell Rows',target:'4 sets x 8-10 reps',key:'barbell_rows'},
+    {name:'Face Pulls',target:'3 sets x 15 reps',key:'face_pulls'},
+    {name:'Bicep Curls',target:'3 sets x 10-12 reps',key:'bicep_curls'}
+  ],
+  Saturday:[
+    {name:'Squats',target:'4 sets x 8-10 reps',key:'squats'},
+    {name:'Romanian Deadlifts',target:'3 sets x 10-12 reps',key:'rdl'},
+    {name:'Bulgarian Split Squats',target:'3 sets x 8-10 reps each',key:'bss'},
+    {name:'Calf Raises',target:'3 sets x 20 reps',key:'calf_raises'},
+    {name:'Hip Flexor & Glute Work',target:'2 sets x 15 reps',key:'hip_glute'}
+  ]
+};
+
+const RUN_DAYS=['Tuesday','Thursday'];
+const REST_DAYS=['Friday','Sunday'];
+
+function buildLogScreen(){
+  document.getElementById('log-meta').textContent=dateStr+' · '+dayName;
+  const content=document.getElementById('log-content');
+  const saveBtn=document.getElementById('save-session-btn');
+  const exercises=WORKOUTS[dayName];
+
+  if(REST_DAYS.includes(dayName)){
+    content.innerHTML=`<div class="rest-day-note"><p>Rest day — no session to log.</p><p style="margin-top:.5rem">Recovery and mobility work is tracked automatically.</p></div>`;
+    saveBtn.style.display='none';
+    return;
+  }
+
+  if(RUN_DAYS.includes(dayName)){
+    content.innerHTML=`<div class="rest-day-note"><p>Run day — your session is captured automatically via Strava and Garmin.</p><p style="margin-top:.5rem">No manual logging needed today.</p></div>`;
+    saveBtn.style.display='none';
+    return;
+  }
+
+  if(!exercises){
+    content.innerHTML=`<div class="rest-day-note"><p>No session scheduled today.</p></div>`;
+    saveBtn.style.display='none';
+    return;
+  }
+
+  // Get previous session data for reference
+  const appData=getAppData();
+  const prevSession=getPreviousSession(dayName,appData);
+
+  let html='';
+  exercises.forEach(ex=>{
+    const prev=prevSession&&prevSession[ex.key];
+    const prevText=prev&&prev.sets&&prev.sets.length>0
+      ?`Last session: <strong>${prev.sets.map(s=>s.weight?s.weight+'kg x'+s.reps:s.reps+' reps').join(', ')}</strong>`
+      :'No previous data yet';
+
+    html+=`
+    <div class="exercise-card" id="card-${ex.key}">
+      <div class="exercise-header" onclick="toggleExercise('${ex.key}')">
+        <div>
+          <div class="exercise-name">${ex.name}</div>
+          <div class="exercise-meta">${ex.target}</div>
+        </div>
+        <span class="exercise-chevron" id="chev-${ex.key}">↓</span>
+      </div>
+      <div class="exercise-body" id="body-${ex.key}">
+        <div class="prev-load">${prevText}</div>
+        <div class="set-headers">
+          <div class="set-header-label">Set</div>
+          <div class="set-header-label">Weight (kg)</div>
+          <div class="set-header-label">Reps</div>
+          <div></div>
+        </div>
+        <div id="sets-${ex.key}"></div>
+        <button class="add-set-btn" onclick="addSet('${ex.key}')">+ add set</button>
+      </div>
+    </div>`;
+  });
+
+  content.innerHTML=html;
+  saveBtn.style.display='block';
+
+  // Pre-populate first set for each exercise
+  exercises.forEach(ex=>addSet(ex.key));
+}
+
+function toggleExercise(key){
+  const body=document.getElementById('body-'+key);
+  const chev=document.getElementById('chev-'+key);
+  const open=body.classList.toggle('open');
+  chev.classList.toggle('open',open);
+  chev.textContent=open?'↑':'↓';
+}
+
+function addSet(key){
+  const container=document.getElementById('sets-'+key);
+  const setNum=container.children.length+1;
+  const row=document.createElement('div');
+  row.className='set-row';
+  row.id=`set-${key}-${setNum}`;
+  row.innerHTML=`
+    <div class="set-num">${setNum}</div>
+    <input class="set-input" type="number" placeholder="kg" id="w-${key}-${setNum}" min="0" step="0.5">
+    <input class="set-input" type="number" placeholder="reps" id="r-${key}-${setNum}" min="0">
+    <button class="set-delete" onclick="deleteSet('${key}',${setNum})">×</button>
+  `;
+  container.appendChild(row);
+  // Auto-expand when first set added
+  const body=document.getElementById('body-'+key);
+  if(!body.classList.contains('open')) toggleExercise(key);
+}
+
+function deleteSet(key,num){
+  const row=document.getElementById(`set-${key}-${num}`);
+  if(row) row.remove();
+  // Renumber remaining sets
+  const container=document.getElementById('sets-'+key);
+  Array.from(container.children).forEach((row,i)=>{
+    row.querySelector('.set-num').textContent=i+1;
+  });
+}
+
+function getPreviousSession(day,appData){
+  const keys=Object.keys(appData).sort().reverse();
+  for(const k of keys){
+    if(k===todayKey) continue;
+    const entry=appData[k];
+    if(entry&&entry.session&&entry.session.day===day) return entry.session.exercises;
+  }
+  return null;
+}
+
+function saveSession(){
+  const exercises=WORKOUTS[dayName];
+  if(!exercises) return;
+
+  const sessionData={day:dayName,date:todayKey,exercises:{}};
+  exercises.forEach(ex=>{
+    const container=document.getElementById('sets-'+ex.key);
+    if(!container) return;
+    const sets=[];
+    Array.from(container.children).forEach((row,i)=>{
+      const w=document.getElementById(`w-${ex.key}-${i+1}`);
+      const r=document.getElementById(`r-${ex.key}-${i+1}`);
+      const weight=w?parseFloat(w.value)||null:null;
+      const reps=r?parseInt(r.value)||null:null;
+      if(reps) sets.push({weight,reps});
+    });
+    if(sets.length>0) sessionData.exercises[ex.key]={name:ex.name,sets};
+  });
+
+  const appData=getAppData();
+  if(!appData[todayKey]) appData[todayKey]={date:todayKey};
+  appData[todayKey].session=sessionData;
+  lss(SK.data,JSON.stringify(appData));
+  saveToDrive(appData);
+
+  const banner=document.getElementById('save-banner');
+  banner.style.display='block';
+  banner.innerHTML=`<strong>Session saved.</strong> Tomorrow's briefing will use these numbers for progressive overload.`;
+  document.getElementById('save-session-btn').textContent='Saved ✓';
+  document.getElementById('save-session-btn').style.opacity='0.5';
 }
 
 // ── INIT ──
