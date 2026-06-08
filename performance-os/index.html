@@ -1481,11 +1481,13 @@
         display: flex;
         gap: 6px;
         align-items: flex-end;
-        height: 40px
+        height: 48px;
+        padding: 0 4px
     }
 
     .lift-bar-wrap {
-        flex: 1;
+        flex: 0 0 auto;
+        width: 32px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1493,7 +1495,7 @@
     }
 
     .lift-bar {
-        width: 100%;
+        width: 24px;
         background: var(--accent);
         border-radius: 3px 3px 0 0;
         min-height: 3px;
@@ -1528,14 +1530,16 @@
 
     .hrv-trend-row {
         display: flex;
-        gap: 4px;
+        gap: 6px;
         align-items: flex-end;
         height: 48px;
-        margin: .75rem 0
+        margin: .75rem 0;
+        padding: 0 4px
     }
 
     .hrv-col {
-        flex: 1;
+        flex: 0 0 auto;
+        width: 32px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1543,7 +1547,7 @@
     }
 
     .hrv-col-bar {
-        width: 100%;
+        width: 24px;
         border-radius: 3px 3px 0 0;
         min-height: 3px;
         transition: height .6s ease
@@ -5253,7 +5257,7 @@
         const trend = prev ? (latest.weight > prev.weight ? '↑ +' + Math.round((latest.weight - prev.weight) * 10) / 10 + 'kg from last session' : latest.weight === prev.weight ? '— same as last session' : '↓ down from last session') : 'First session logged';
 
         const bars = recent.map(s => {
-            const h = Math.round((s.weight / max) * 36) + 4;
+            const h = Math.round((s.weight / max) * 40) + 4;
             return `<div class="lift-bar-wrap"><div class="lift-bar" style="height:${h}px"></div><div class="lift-bar-label">${s.weight}</div></div>`;
         }).join('');
 
@@ -5291,7 +5295,7 @@
         const avg = Math.round(recent.reduce((s, d) => s + d.hrv, 0) / recent.length);
 
         const cols = recent.map(d => {
-            const h = Math.round((d.hrv / max) * 42) + 4;
+            const h = Math.round((d.hrv / max) * 40) + 4;
             const color = d.hrv >= avg ? 'var(--success)' : 'var(--warn)';
             const dayLabel = new Date(d.date).toLocaleDateString('en-SG', {
                 weekday: 'short'
