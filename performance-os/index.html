@@ -3319,15 +3319,20 @@
         const exercises = WORKOUTS[dayName];
         if (!exercises || exercises.length === 0)
             return '';
-        return `<div style="border-top:1px solid var(--border);padding-top:.85rem;margin-top:.85rem">
-            ${exercises.map((ex, i) => {// Parse target string "4 sets x 6-8 reps" into sets/reps partsconst parts = ex.target.match(/^(\d+\s*sets?)\s*[x×]\s*(.+)$/i);const setsStr = parts ? parts[1] : ex.target;const repsStr = parts ? parts[2] : '';return `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:.6rem 0;${i > 0 ? 'border-top:1px solid var(--border)' : ''}">
-                    <div style="font-size:13px;font-weight:600;color:var(--text)">${ex.name}</div>
-                    <div style="text-align:right;flex-shrink:0">
-                      <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">${setsStr}</div>
-                      ${repsStr ? `<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">${repsStr}</div>` : ''}
-                    </div>
-                  </div>`;}).join('')}
-          </div>`;
+        let rows = '';
+        exercises.forEach(function(ex, i) {
+            const parts = ex.target.match(/^(\d+\s*sets?)\s*[x×]\s*(.+)$/i);
+            const setsStr = parts ? parts[1] : ex.target;
+            const repsStr = parts ? parts[2] : '';
+            const border = i > 0 ? 'border-top:1px solid var(--border)' : '';
+            rows += '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:.6rem 0;' + border + '">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + ex.name + '</div>'
+            + '<div style="text-align:right;flex-shrink:0">'
+            + '<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">' + setsStr + '</div>'
+            + (repsStr ? '<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">' + repsStr + '</div>' : '')
+            + '</div></div>';
+        });
+        return '<div style="border-top:1px solid var(--border);padding-top:.85rem;margin-top:.85rem">' + rows + '</div>';
     }
 
     // ── RENDER BRIEFING ──
