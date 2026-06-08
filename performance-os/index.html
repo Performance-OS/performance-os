@@ -1272,7 +1272,7 @@
     }
 
     .goal-current {
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 700;
         font-family: var(--font-mono);
         color: var(--text)
@@ -2928,11 +2928,8 @@
                 History
             </div>
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
-            <div class="history-filter-row">
+            <div class="history-filter-row" id="history-filter-row">
                 <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
-                <button class="history-filter-btn" onclick="filterHistory('Monday',this)">Push</button>
-                <button class="history-filter-btn" onclick="filterHistory('Wednesday',this)">Pull</button>
-                <button class="history-filter-btn" onclick="filterHistory('Saturday',this)">Legs</button>
             </div>
             <div id="history-container"></div>
         </div>
@@ -4677,9 +4674,23 @@
             banner.innerHTML = `<strong>Session saved.</strong> Tomorrow's briefing will use these numbers for progressive overload.`;
         }
         localStorage.removeItem('pos_lift_state');
-        document.getElementById('save-session-btn').textContent = 'Saved ✓';
-        document.getElementById('save-session-btn').style.opacity = '0.5';
-        // Refresh streak counter immediately so dashboard shows this session
+        document.getElementById('save-session-btn').style.display = 'none';
+        const noteWrap2 = document.getElementById('session-note-wrap');
+        if (noteWrap2)
+            noteWrap2.style.display = 'none';
+        // Show session complete state
+        const logContent = document.getElementById('log-content');
+        const sessionType = dayName === 'Monday' ? 'Push' : dayName === 'Wednesday' ? 'Pull' : 'Legs';
+        const prText = prs.length > 0 ? `<div style="margin-top:.75rem">${prs.map(p => `<div style="font-size:12px;font-family:var(--font-mono);color:var(--accent)">↑ ${p}</div>`).join('')}</div>` : '';
+        logContent.innerHTML = `
+            <div style="text-align:center;padding:2rem 1rem">
+              <div style="font-size:48px;margin-bottom:.75rem">💪</div>
+              <div style="font-size:22px;font-weight:800;color:var(--accent);margin-bottom:.4rem">Session complete</div>
+              <div style="font-size:13px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:.5rem">${sessionType} — ${dateStr}</div>
+              ${prText}
+              <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-top:1rem">Tomorrow's briefing will use these numbers.</div>
+            </div>`;
+        // Refresh streak counter immediately
         const freshData = getAppData();
         if (document.getElementById('streak-container'))
             buildStreakCounter(freshData);
@@ -5250,7 +5261,7 @@
             <div class="lift-trend-card">
               <div class="lift-trend-name">Bench Press — top set weight</div>
               <div class="lift-trend-row">${bars}</div>
-              <div class="lift-trend-latest">${latest.weight}kg</div>
+              <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:var(--accent);margin-top:.5rem">${latest.weight}kg top set · e1RM ~${Math.round(latest.weight * (36 / (37 - Math.min(6, 36))))}kg</div>
               <div class="lift-trend-sub">${trend}</div>
             </div>`;
     }
@@ -6228,6 +6239,21 @@
                 });
             }
         });
+
+        // Build dynamic filters from actual session days in data
+        const filterRow = document.getElementById('history-filter-row');
+        if (filterRow) {
+            const uniqueDays = [...new Set(sessions.map(s => s.session.day))];
+            const dayLabels = {
+                Monday: 'Push',
+                Wednesday: 'Pull',
+                Saturday: 'Legs',
+                Tuesday: 'Z2 Run',
+                Thursday: 'Intervals'
+            };
+            filterRow.innerHTML = `<button class="history-filter-btn${historyFilter === 'all' ? ' active' : ''}" onclick="filterHistory('all',this)">All</button>`
+            + uniqueDays.map(d => `<button class="history-filter-btn${historyFilter === d ? ' active' : ''}" onclick="filterHistory('${d}',this)">${dayLabels[d] || d}</button>`).join('');
+        }
 
         // Filter
         const filtered = historyFilter === 'all' ? sessions : sessions.filter(s => s.session.day === historyFilter);
