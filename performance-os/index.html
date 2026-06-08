@@ -2353,12 +2353,12 @@
                     <div class="sleep-hm-row" style="gap:12px;align-items:center">
                         <div class="sleep-hm-wrap" style="flex:1">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Bedtime</div>
-                            <input type="time" id="g-bedtime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration()">
+                            <input type="time" id="g-bedtime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
                         </div>
                         <div style="font-size:18px;color:var(--muted);font-family:var(--font-mono);padding-top:16px">→</div>
                         <div class="sleep-hm-wrap" style="flex:1">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Wake time</div>
-                            <input type="time" id="g-waketime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration()">
+                            <input type="time" id="g-waketime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
                         </div>
                         <div class="sleep-hm-wrap" style="flex:0 0 auto;text-align:right">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Duration</div>
@@ -2844,12 +2844,21 @@
         const m = totalMins % 60;
         if (display)
             display.textContent = h + 'h ' + m + 'm';
-        checkReady();
         return Math.round((totalMins / 60) * 10) / 10;
     }
 
     function getSleepDecimal() {
-        return calcSleepDuration();
+        const bed = document.getElementById('g-bedtime').value;
+        const wake = document.getElementById('g-waketime').value;
+        if (!bed || !wake)
+            return null;
+        const [bh, bm] = bed.split(':').map(Number);
+        const [wh, wm] = wake.split(':').map(Number);
+        let bedMins = bh * 60 + bm;
+        let wakeMins = wh * 60 + wm;
+        if (wakeMins <= bedMins)
+            wakeMins += 24 * 60;
+        return Math.round(((wakeMins - bedMins) / 60) * 10) / 10;
     }
 
     // ── SETUP ──
@@ -3663,7 +3672,9 @@
 
     function switchTab(tab) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.add('active');
+        const activeTab = document.getElementById('tab-' + tab);
+        if (activeTab)
+            activeTab.classList.add('active');
         if (tab === 'briefing') {
             const appData = getAppData();
             const today = appData[todayKey];
