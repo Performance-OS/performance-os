@@ -2054,6 +2054,140 @@
         border-color: rgba(245, 166, 35, .4);
         background: rgba(245, 166, 35, .08);
         color: var(--warn)
+    }/* PLAN GENERATOR */
+    .plan-screen-title {
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: .25rem
+    }
+
+    .plan-option-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 1.5rem
+    }
+
+    .plan-option {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1rem;
+        cursor: pointer;
+        transition: all .15s;
+        text-align: left
+    }
+
+    .plan-option:hover {
+        border-color: var(--muted2)
+    }
+
+    .plan-option.selected {
+        border-color: rgba(200, 245, 96, .5);
+        background: rgba(200, 245, 96, .07)
+    }
+
+    .plan-option-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 3px
+    }
+
+    .plan-option-sub {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .plan-week {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1.25rem;
+        margin-bottom: .75rem
+    }
+
+    .plan-week-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: .85rem
+    }
+
+    .plan-week-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--accent)
+    }
+
+    .plan-week-tag {
+        font-size: 9px;
+        font-family: var(--font-mono);
+        color: var(--muted2);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        border-radius: 20px
+    }
+
+    .plan-day-row {
+        display: flex;
+        gap: 10px;
+        padding: .5rem 0;
+        border-bottom: 1px solid var(--border);
+        align-items: start
+    }
+
+    .plan-day-row:last-child {
+        border-bottom: none
+    }
+
+    .plan-day-label {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--accent);
+        min-width: 30px;
+        padding-top: 1px
+    }
+
+    .plan-day-content {
+        font-size: 12px;
+        color: var(--muted2);
+        line-height: 1.5;
+        flex: 1
+    }
+
+    .plan-save-btn {
+        width: 100%;
+        padding: 14px;
+        background: var(--accent);
+        color: #0a0a0a;
+        border: none;
+        border-radius: var(--r);
+        font-size: 14px;
+        font-weight: 700;
+        font-family: var(--font-display);
+        cursor: pointer;
+        margin-top: 1rem;
+        transition: opacity .15s
+    }
+
+    .plan-save-btn:hover {
+        opacity: .85
+    }
+
+    .plan-saved-badge {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--success);
+        background: rgba(96, 213, 160, .08);
+        border: 1px solid rgba(96, 213, 160, .2);
+        padding: 6px 12px;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: .75rem
     }
 
     .settings-link {
@@ -2213,16 +2347,7 @@
                     <input class="garmin-input" type="number" id="g-weight" placeholder="—" min="40" max="150" step="0.1" oninput="checkReady()">
                     <div class="garmin-unit">kg (optional)</div>
                 </div>
-                <div class="garmin-field">
-                    <div class="garmin-label">REM Sleep</div>
-                    <input class="garmin-input" type="number" id="g-rem" placeholder="—" min="0" max="200" oninput="checkReady()">
-                    <div class="garmin-unit">minutes</div>
-                </div>
-                <div class="garmin-field">
-                    <div class="garmin-label">Deep Sleep</div>
-                    <input class="garmin-input" type="number" id="g-deep" placeholder="—" min="0" max="200" oninput="checkReady()">
-                    <div class="garmin-unit">minutes</div>
-                </div>
+
                 <div class="sleep-field" style="grid-column:span 2">
                     <div class="garmin-label">Sleep times</div>
                     <div class="sleep-hm-row" style="gap:12px;align-items:center">
@@ -2484,6 +2609,19 @@
                 </button>
             </div>
 
+            <!-- PLAN GENERATOR BUTTON -->
+            <div style="margin-top:.75rem;margin-bottom:.75rem">
+                <button onclick="switchTab('plan')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 19V6l12-3v13M9 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-3c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/>
+                        </svg>
+                        <span>Generate Training Plan</span>
+                    </div>
+                    <span style="color:var(--muted);font-size:12px">4-week block →</span>
+                </button>
+            </div>
+
             <!-- CALENDAR BUTTON -->
             <div style="margin-top:0">
                 <button onclick="switchTab('calendar')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -2552,6 +2690,85 @@
                     <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Your Races</div>
                     <div id="race-list"></div>
                 </div>
+            </div>
+        </div>
+        <!-- PLAN GENERATOR SCREEN -->
+        <div class="screen" id="screen-plan">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div class="plan-screen-title">
+                Training
+                <br>
+                Plan
+            </div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Generate a personalised 4-week block</div>
+
+            <div id="plan-setup">
+                <div class="dash-section-label">Focus for this block</div>
+                <div class="plan-option-grid" id="plan-focus-grid">
+                    <div class="plan-option" onclick="selectPlanFocus('5k')">
+                        <div class="plan-option-title">5K Speed</div>
+                        <div class="plan-option-sub">Target sub-19:00 · intervals + tempo</div>
+                    </div>
+                    <div class="plan-option" onclick="selectPlanFocus('hm')">
+                        <div class="plan-option-title">Half Marathon Base</div>
+                        <div class="plan-option-sub">Build to sub-1:30 · volume + Z2</div>
+                    </div>
+                    <div class="plan-option" onclick="selectPlanFocus('bench')">
+                        <div class="plan-option-title">Bench Strength</div>
+                        <div class="plan-option-sub">Push toward 100kg · progressive overload</div>
+                    </div>
+                    <div class="plan-option" onclick="selectPlanFocus('muscleup')">
+                        <div class="plan-option-title">Muscle Up Skill</div>
+                        <div class="plan-option-sub">CTB to muscle up · transition strength</div>
+                    </div>
+                    <div class="plan-option" onclick="selectPlanFocus('balanced')">
+                        <div class="plan-option-title">Balanced</div>
+                        <div class="plan-option-sub">All goals · standard weekly structure</div>
+                    </div>
+                    <div class="plan-option" onclick="selectPlanFocus('recovery')">
+                        <div class="plan-option-title">Recovery Block</div>
+                        <div class="plan-option-sub">Deload · reduce volume and intensity</div>
+                    </div>
+                </div>
+
+                <div class="dash-section-label">Starting week</div>
+                <div class="plan-option-grid">
+                    <div class="plan-option selected" id="plan-week-1" onclick="selectPlanWeek(1)">
+                        <div class="plan-option-title">Week 1-2 level</div>
+                        <div class="plan-option-sub">25-30km · returning / base</div>
+                    </div>
+                    <div class="plan-option" id="plan-week-2" onclick="selectPlanWeek(2)">
+                        <div class="plan-option-title">Week 3-4 level</div>
+                        <div class="plan-option-sub">30-35km · building</div>
+                    </div>
+                    <div class="plan-option" id="plan-week-3" onclick="selectPlanWeek(3)">
+                        <div class="plan-option-title">Month 2-3 level</div>
+                        <div class="plan-option-sub">35-45km · solid base</div>
+                    </div>
+                    <div class="plan-option" id="plan-week-4" onclick="selectPlanWeek(4)">
+                        <div class="plan-option-title">Month 4-6 level</div>
+                        <div class="plan-option-sub">45-55km · high volume</div>
+                    </div>
+                </div>
+
+                <button class="cta-btn" id="plan-gen-btn" onclick="generateTrainingPlan()" disabled>Generate 4-week plan →</button>
+            </div>
+
+            <div id="plan-loading" style="display:none" class="loading-state">
+                <div class="loading-dots">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+                <div class="loading-label">Building your 4-week plan...</div>
+            </div>
+
+            <div id="plan-result" style="display:none">
+                <div class="dash-section-label" style="margin-top:.5rem">Your 4-week block</div>
+                <div id="plan-weeks-container"></div>
+                <button class="plan-save-btn" onclick="savePlan()">Save this plan →</button>
+                <div id="plan-saved-msg" style="display:none" class="plan-saved-badge">✓ Plan saved — your Monday briefings will now reference this block</div>
+                <button class="cta-btn" style="background:transparent;color:var(--muted2);border:1px solid var(--border);margin-top:.5rem;font-size:13px" onclick="document.getElementById('plan-result').style.display='none';document.getElementById('plan-setup').style.display='block'">← Generate a different plan</button>
             </div>
         </div>
     </div>
@@ -3488,6 +3705,8 @@
         } else if (tab === 'benchmark') {
             buildBenchmarkScreen();
             showScreen('benchmark');
+        } else if (tab === 'plan') {
+            showScreen('plan');
         }
     }
 
@@ -4713,7 +4932,6 @@
         }
 
         // Check for Strava run on this day
-        const latestRuns2 = Object.values(appData || {}).reduce((acc, v) => v && v._latestRuns ? v._latestRuns : acc, []);
         const allRuns = getAppData()._latestRuns || [];
         const dayRun = allRuns.find(r => r.date === dateKey);
         const runHtml = dayRun ? `<div style="margin-top:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
@@ -5399,17 +5617,6 @@
         const weekSessions = weekKeys.filter(k => {
             if (appData[k] && appData[k].session)
                 return true;
-            // Also check if today has a session saved that hasn't synced yet
-            if (k === todayKey) {
-                try {
-                    const liftState = localStorage.getItem('pos_lift_state');
-                    if (liftState) {
-                        const st = JSON.parse(liftState);
-                        if (st.date === todayKey && st.day === dayName)
-                            return false; // in progress, not saved
-                    }
-                } catch (e) {}
-            }
             return false;
         }).length;
 
@@ -5624,6 +5831,189 @@
         toggleNiggle(niggle.area);
         if (niggle.severity)
             setNiggleSeverity(niggle.severity);
+    }
+
+    // ── TRAINING PLAN GENERATOR ──
+    const PLAN_STATE = {
+        focus: null,
+        weekLevel: 1
+    };
+
+    function selectPlanFocus(focus) {
+        PLAN_STATE.focus = focus;
+        document.querySelectorAll('.plan-option-grid').item(0)
+        .querySelectorAll('.plan-option').forEach(el => {
+            el.classList.toggle('selected', el.getAttribute('onclick') === `selectPlanFocus('${focus}')`);
+        });
+        document.getElementById('plan-gen-btn').disabled = false;
+    }
+
+    function selectPlanWeek(level) {
+        PLAN_STATE.weekLevel = level;
+        [1, 2, 3, 4].forEach(i => {
+            const el = document.getElementById('plan-week-' + i);
+            if (el)
+                el.classList.toggle('selected', i === level);
+        });
+    }
+
+    const VOLUME_MAP = {
+        1: '25-30km',
+        2: '30-35km',
+        3: '35-45km',
+        4: '45-55km'
+    };
+    const LONG_RUN_MAP = {
+        1: '12-14km',
+        2: '16-18km',
+        3: '20-24km',
+        4: '26-32km'
+    };
+
+    async function generateTrainingPlan() {
+        if (!PLAN_STATE.focus)
+            return;
+        document.getElementById('plan-setup').style.display = 'none';
+        document.getElementById('plan-loading').style.display = 'block';
+        document.getElementById('plan-result').style.display = 'none';
+
+        const appData = getAppData();
+        const latestRuns = appData._latestRuns || [];
+        const recentVolume = latestRuns.slice(0, 5).reduce((s, r) => s + r.distance_km, 0);
+        const benchHistory = [];
+        Object.keys(appData).filter(k => !k.startsWith('_')).sort().reverse().slice(0, 8).forEach(k => {
+            const e = appData[k];
+            if (e && e.session && e.session.exercises && e.session.exercises.bench) {
+                const sets = e.session.exercises.bench.sets || [];
+                const best = Math.max(...sets.filter(s => s.weight).map(s => s.weight), 0);
+                if (best > 0)
+                    benchHistory.push(best);
+            }
+        });
+        const currentBench = benchHistory.length > 0 ? Math.max(...benchHistory) : null;
+
+        const focusLabels = {
+            '5k': 'Sub-19min 5K speed development',
+            'hm': 'Half marathon base building toward sub-1:30',
+            'bench': 'Bench press strength toward 100kg',
+            'muscleup': 'Muscle up skill and strength development',
+            'balanced': 'Balanced development across all goals',
+            'recovery': 'Recovery/deload block'
+        };
+
+        const prompt = `You are Alex's performance coach. Generate a personalised 4-week training block.
+
+        ATHLETE PROFILE:
+        - Age: 24, Singapore (heat/humidity always a factor)
+        - Goals: Sub-19 5K (current 19:35), 100kg bench (current ~${currentBench || 88}kg), muscle ups (10-15 pull ups), sub-1:30 HM, sub-3:30 marathon
+        - Weekly structure: Mon Push, Tue Z2 run, Wed Pull, Thu Intervals, Fri Rest, Sat Long run + Legs, Sun Yoga
+        - Run zones: Z2=132-164bpm (easy 132-148), Z3=165-180, Z4=181-196
+        - Current weekly volume: ~${Math.round(recentVolume)}km from last 5 runs
+        - Starting volume level: ${VOLUME_MAP[PLAN_STATE.weekLevel]} per week
+        - Long run target: ${LONG_RUN_MAP[PLAN_STATE.weekLevel]}
+
+        BLOCK FOCUS: ${focusLabels[PLAN_STATE.focus]}
+
+        Generate a structured 4-week progressive block. Each week should build on the last with clear progression. Week 4 can be a slight deload before the next block.
+
+        Respond ONLY as JSON, no markdown, no backticks:
+        {
+          "blockTitle": "short name for this training block",
+          "blockGoal": "one sentence — what this block achieves",
+          "weeks": [
+            {
+              "weekNum": 1,
+              "theme": "short week theme e.g. Base Building",
+              "totalKm": "e.g. 26km",
+              "days": {
+                "Mon": "specific push session with key loads/targets",
+                "Tue": "specific run — distance, HR zone, any structure",
+                "Wed": "specific pull session with key targets",
+                "Thu": "specific run — distance, HR zone, structure",
+                "Sat": "long run distance + HR target, then legs key focus",
+                "Sun": "yoga focus areas for this week"
+              },
+              "keyFocus": "one sentence — the most important thing about this week"
+            }
+          ],
+          "coachNote": "2-3 sentences of overall coaching advice for this block — what to watch for, what success looks like"
+        }`;
+
+        try {
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': ls(SK.apiKey),
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-5',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }]
+                })
+            });
+            if (!res.ok)
+                throw new Error('API error ' + res.status);
+            const data = await res.json();
+            const raw = data.content[0].text.replace(/```json|```/g, '').trim();
+            const plan = JSON.parse(raw);
+            document.getElementById('plan-loading').style.display = 'none';
+            renderTrainingPlan(plan);
+        } catch (e) {
+            document.getElementById('plan-loading').style.display = 'none';
+            document.getElementById('plan-setup').style.display = 'block';
+            alert('Error generating plan: ' + e.message);
+        }
+    }
+
+    function renderTrainingPlan(plan) {
+        const container = document.getElementById('plan-weeks-container');
+        const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Sat', 'Sun'];
+
+        container.innerHTML = `
+            <div style="background:rgba(200,245,96,.06);border:1px solid rgba(200,245,96,.15);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem">
+              <div style="font-size:15px;font-weight:700;color:var(--accent);margin-bottom:.3rem">${plan.blockTitle}</div>
+              <div style="font-size:13px;color:var(--muted2);line-height:1.5;margin-bottom:.5rem">${plan.blockGoal}</div>
+              <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);line-height:1.6">${plan.coachNote}</div>
+            </div>
+            ${plan.weeks.map(w => `
+            <div class="plan-week">
+              <div class="plan-week-header">
+                <div class="plan-week-title">Week ${w.weekNum} — ${w.theme}</div>
+                <div class="plan-week-tag">${w.totalKm}</div>
+              </div>
+              ${dayOrder.filter(d => w.days[d]).map(d => `
+              <div class="plan-day-row">
+                <div class="plan-day-label">${d}</div>
+                <div class="plan-day-content">${w.days[d]}</div>
+              </div>`).join('')}
+              <div style="margin-top:.6rem;padding:.6rem;background:var(--surface2);border-radius:6px;font-size:11px;font-family:var(--font-mono);color:var(--accent2)">↳ ${w.keyFocus}</div>
+            </div>`).join('')}
+          `;
+        document.getElementById('plan-result').style.display = 'block';
+        // Store plan in memory for saving
+        window._generatedPlan = plan;
+    }
+
+    function savePlan() {
+        if (!window._generatedPlan)
+            return;
+        const appData = getAppData();
+        appData._trainingPlan = {
+            plan: window._generatedPlan,
+            focus: PLAN_STATE.focus,
+            weekLevel: PLAN_STATE.weekLevel,
+            generatedDate: todayKey
+        };
+        lss(SK.data, JSON.stringify(appData));
+        saveToDrive(appData);
+        document.getElementById('plan-saved-msg').style.display = 'block';
+        document.getElementById('plan-save-btn') && (document.querySelector('.plan-save-btn').style.display = 'none');
     }
 
     // ── INIT ──
