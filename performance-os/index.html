@@ -2197,27 +2197,47 @@
                     <input class="garmin-input" type="number" id="g-hrv" placeholder="—" min="0" max="120" oninput="checkReady()">
                     <div class="garmin-unit">7-day avg (ms)</div>
                 </div>
+                <div class="garmin-field">
+                    <div class="garmin-label">REM Sleep</div>
+                    <input class="garmin-input" type="number" id="g-rem" placeholder="—" min="0" max="180" oninput="checkReady()">
+                    <div class="garmin-unit">minutes</div>
+                </div>
+                <div class="garmin-field">
+                    <div class="garmin-label">Deep Sleep</div>
+                    <input class="garmin-input" type="number" id="g-deep" placeholder="—" min="0" max="180" oninput="checkReady()">
+                    <div class="garmin-unit">minutes</div>
+                </div>
                 <!-- SLEEP DURATION — hrs & mins -->
                 <div class="garmin-field">
                     <div class="garmin-label">Body Weight</div>
                     <input class="garmin-input" type="number" id="g-weight" placeholder="—" min="40" max="150" step="0.1" oninput="checkReady()">
                     <div class="garmin-unit">kg (optional)</div>
                 </div>
-                <!-- SLEEP TIMING — bedtime & wake time (replaces manual duration) -->
-                <div class="sleep-field" style="grid-column:1/-1">
-                    <div class="garmin-label">Sleep Timing</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:center">
-                        <div>
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Bedtime</div>
-                            <input type="time" id="g-bedtime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:16px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                <div class="garmin-field">
+                    <div class="garmin-label">REM Sleep</div>
+                    <input class="garmin-input" type="number" id="g-rem" placeholder="—" min="0" max="200" oninput="checkReady()">
+                    <div class="garmin-unit">minutes</div>
+                </div>
+                <div class="garmin-field">
+                    <div class="garmin-label">Deep Sleep</div>
+                    <input class="garmin-input" type="number" id="g-deep" placeholder="—" min="0" max="200" oninput="checkReady()">
+                    <div class="garmin-unit">minutes</div>
+                </div>
+                <div class="sleep-field" style="grid-column:span 2">
+                    <div class="garmin-label">Sleep times</div>
+                    <div class="sleep-hm-row" style="gap:12px;align-items:center">
+                        <div class="sleep-hm-wrap" style="flex:1">
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Bedtime</div>
+                            <input type="time" id="g-bedtime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration()">
                         </div>
-                        <div>
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Wake</div>
-                            <input type="time" id="g-waketime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:16px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                        <div style="font-size:18px;color:var(--muted);font-family:var(--font-mono);padding-top:16px">→</div>
+                        <div class="sleep-hm-wrap" style="flex:1">
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Wake time</div>
+                            <input type="time" id="g-waketime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration()">
                         </div>
-                        <div>
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Duration</div>
-                            <div id="sleep-duration-display" style="font-size:16px;font-weight:500;font-family:var(--font-mono);color:var(--muted2)">—</div>
+                        <div class="sleep-hm-wrap" style="flex:0 0 auto;text-align:right">
+                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Duration</div>
+                            <div id="sleep-duration-display" style="font-size:18px;font-weight:500;font-family:var(--font-mono);color:var(--muted2)">—</div>
                         </div>
                     </div>
                 </div>
@@ -2317,7 +2337,7 @@
         <!-- BRIEFING -->
         <div class="screen" id="screen-briefing">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-                <button class="back-btn" style="margin-bottom:0" onclick="showScreen('checkin')">← edit check-in</button>
+                <button class="back-btn" style="margin-bottom:0" onclick="hideTabBar();showScreen('checkin')">← edit check-in</button>
                 <button class="regen-btn" id="regen-btn" onclick="forceRegenerate()">↺ regenerate</button>
             </div>
             <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.25rem">
@@ -2365,20 +2385,20 @@
                       Briefing
                     
             </button>
-            <button class="tab-btn" id="tab-log" onclick="switchTab('log')">
-                <svg viewBox="0 0 24 24">
-                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M12 12h.01M12 16h.01M8 12h.01M8 16h.01M16 12h.01"/>
-                </svg>
-
-                      Log
-                    
-            </button>
             <button class="tab-btn" id="tab-dashboard" onclick="switchTab('dashboard')">
                 <svg viewBox="0 0 24 24">
                     <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>
                 </svg>
 
                       Dashboard
+                    
+            </button>
+            <button class="tab-btn" id="tab-log" onclick="switchTab('log')">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M12 12h.01M12 16h.01M8 12h.01M8 16h.01M16 12h.01"/>
+                </svg>
+
+                      Log
                     
             </button>
         </div>
@@ -2437,6 +2457,7 @@
             <!-- THIS WEEK -->
             <div class="dash-section-label" style="margin-top:1.5rem">This Week</div>
             <div class="week-grid" id="week-grid"></div>
+            <div class="week-detail" id="week-detail"></div>
 
             <!-- RECENT RUNS -->
             <div class="dash-section-label" style="margin-top:1.5rem">Recent Runs</div>
@@ -2555,9 +2576,9 @@
         accessToken: 'pos_access_token',
         tokenExpiry: 'pos_token_expiry',
         fileId: 'pos_drive_file_id',
-        configFileId: 'pos_drive_config_id',
         data: 'pos_data',
-        stravaToken: 'pos_strava_refresh_token'
+        stravaToken: 'pos_strava_refresh_token',
+        liftCache: 'pos_lift_cache'
     };
     const STATE = {
         garmin: {
@@ -2585,33 +2606,113 @@
         document.getElementById('screen-' + n).classList.add('active');
     }
 
-    // ── SLEEP TIMING → DECIMAL HOURS ──
+    // ── BEDTIME/WAKETIME → SLEEP DURATION ──
     function calcSleepDuration() {
-        const bedtime = document.getElementById('g-bedtime').value;
-        const waketime = document.getElementById('g-waketime').value;
+        const bed = document.getElementById('g-bedtime').value;
+        const wake = document.getElementById('g-waketime').value;
         const display = document.getElementById('sleep-duration-display');
-        if (!bedtime || !waketime) {
+        if (!bed || !wake) {
             if (display)
                 display.textContent = '—';
             return null;
         }
-        const [bh, bm] = bedtime.split(':').map(Number);
-        const [wh, wm] = waketime.split(':').map(Number);
-        let mins = (wh * 60 + wm) - (bh * 60 + bm);
-        if (mins <= 0)
-            mins += 24 * 60; // crossed midnight
-        const hours = Math.round((mins / 60) * 10) / 10;
-        const h = Math.floor(hours);
-        const m = Math.round((hours - h) * 60);
+        const [bh, bm] = bed.split(':').map(Number);
+        const [wh, wm] = wake.split(':').map(Number);
+        let bedMins = bh * 60 + bm;
+        let wakeMins = wh * 60 + wm;
+        if (wakeMins <= bedMins)
+            wakeMins += 24 * 60; // overnight
+        const totalMins = wakeMins - bedMins;
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
         if (display)
-            display.textContent = `${h}h ${m}m`;
-        return hours;
+            display.textContent = h + 'h ' + m + 'm';
+        checkReady();
+        return Math.round((totalMins / 60) * 10) / 10;
     }
+
     function getSleepDecimal() {
         return calcSleepDuration();
     }
 
     // ── SETUP ──
+    async function saveConfigToDrive(apiKey, clientId, stravaToken) {
+        // Save config to Drive so it survives localStorage clearing
+        try {
+            const token = await getValidToken();
+            if (!token)
+                return;
+            const cfg = {
+                apiKey,
+                clientId,
+                stravaToken,
+                savedAt: new Date().toISOString()
+            };
+            const body = JSON.stringify(cfg, null, 2);
+            const boundary = 'cfgbound';
+            const meta = {
+                name: 'performance-os-config.json',
+                parents: ['appDataFolder']
+            };
+            // Check if config file exists
+            const search = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27performance-os-config.json%27&fields=files(id)', {
+                headers: {
+                    Authorization: 'Bearer ' + token
+                }
+            });
+            const searchRes = await search.json();
+            const existingId = searchRes.files && searchRes.files.length > 0 ? searchRes.files[0].id : null;
+            const url = existingId
+            ? 'https://www.googleapis.com/upload/drive/v3/files/' + existingId + '?uploadType=multipart'
+            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+            const method = existingId ? 'PATCH' : 'POST';
+            await fetch(url, {
+                method,
+                headers: {
+                    Authorization: 'Bearer ' + token,
+                    'Content-Type': 'multipart/related; boundary=' + boundary
+                },
+                body: '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + JSON.stringify(existingId ? {
+                    name: 'performance-os-config.json'
+                } : meta) + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + body + '\r\n--' + boundary + '--'
+            });
+        } catch (e) {
+            console.log('Config save error:', e);
+        }
+    }
+
+    async function loadConfigFromDrive() {
+        try {
+            const token = ls(SK.accessToken);
+            if (!token)
+                return false;
+            const search = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27performance-os-config.json%27&fields=files(id)', {
+                headers: {
+                    Authorization: 'Bearer ' + token
+                }
+            });
+            const searchRes = await search.json();
+            if (!searchRes.files || searchRes.files.length === 0)
+                return false;
+            const fileId = searchRes.files[0].id;
+            const res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+                headers: {
+                    Authorization: 'Bearer ' + token
+                }
+            });
+            const cfg = await res.json();
+            if (cfg.apiKey)
+                lss(SK.apiKey, cfg.apiKey);
+            if (cfg.clientId)
+                lss(SK.clientId, cfg.clientId);
+            if (cfg.stravaToken)
+                lss(SK.stravaToken, cfg.stravaToken);
+            return !!(cfg.apiKey && cfg.clientId);
+        } catch (e) {
+            return false;
+        }
+    }
+
     function saveSetup() {
         const ak = document.getElementById('api-key-input').value.trim();
         const cid = document.getElementById('client-id-input').value.trim();
@@ -2631,90 +2732,9 @@
         lss(SK.apiKey, ak);
         lss(SK.clientId, cid);
         lss(SK.stravaToken, st);
+        // Save to Drive after Google auth completes — triggered in auth callback
         showScreen('auth');
         initGoogleAuth();
-    }
-
-    // ── DRIVE CONFIG (persists API key + Client ID so Safari localStorage wipes don't log you out) ──
-    async function saveConfigToDrive(token) {
-        try {
-            const config = {
-                apiKey: ls(SK.apiKey),
-                clientId: ls(SK.clientId),
-                stravaToken: ls(SK.stravaToken)
-            };
-            const body = JSON.stringify(config, null, 2);
-            const meta = {
-                name: 'performance-os-config.json',
-                parents: ['appDataFolder']
-            };
-            const boundary = 'cfgbound';
-            const buildBody = (m) => `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(m)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
-            let fileId = ls(SK.configFileId);
-            let res;
-            if (fileId) {
-                res = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart', {
-                    method: 'PATCH',
-                    headers: {
-                        Authorization: 'Bearer ' + token,
-                        'Content-Type': 'multipart/related; boundary=' + boundary
-                    },
-                    body: buildBody({
-                        name: 'performance-os-config.json'
-                    })
-                });
-            } else {
-                res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        Authorization: 'Bearer ' + token,
-                        'Content-Type': 'multipart/related; boundary=' + boundary
-                    },
-                    body: buildBody(meta)
-                });
-            }
-            const saved = await res.json();
-            if (saved.id)
-                lss(SK.configFileId, saved.id);
-        } catch (e) {
-            console.log('Config save error:', e);
-        }
-    }
-
-    async function loadConfigFromDrive(token) {
-        try {
-            let fileId = ls(SK.configFileId);
-            if (!fileId) {
-                const s = await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'performance-os-config.json'&fields=files(id)", {
-                    headers: {
-                        Authorization: 'Bearer ' + token
-                    }
-                });
-                const r = await s.json();
-                if (r.files && r.files.length > 0) {
-                    fileId = r.files[0].id;
-                    lss(SK.configFileId, fileId);
-                }
-            }
-            if (fileId) {
-                const fr = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
-                    headers: {
-                        Authorization: 'Bearer ' + token
-                    }
-                });
-                const cfg = await fr.json();
-                if (cfg.apiKey)
-                    lss(SK.apiKey, cfg.apiKey);
-                if (cfg.clientId)
-                    lss(SK.clientId, cfg.clientId);
-                if (cfg.stravaToken)
-                    lss(SK.stravaToken, cfg.stravaToken);
-                return true;
-            }
-        } catch (e) {
-            console.log('Config load error:', e);
-        }
-        return false;
     }
 
     // ── GOOGLE AUTH ──
@@ -2734,8 +2754,12 @@
                 lss(SK.accessToken, resp.access_token);
                 lss(SK.tokenExpiry, Date.now() + (resp.expires_in * 1000));
                 showAuthStatus('Connected to Google Drive ✓', 'ok');
-                // Save config to Drive so it survives localStorage wipes
-                saveConfigToDrive(resp.access_token);
+                // Save config to Drive so it survives localStorage clearing
+                const ak = ls(SK.apiKey),
+                    cid = ls(SK.clientId),
+                    st = ls(SK.stravaToken);
+                if (ak && cid)
+                    setTimeout(() => saveConfigToDrive(ak, cid, st || ''), 1000);
                 setTimeout(() => loadFromDrive().then(() => showScreen('checkin')), 800);
             }
         });
@@ -2893,20 +2917,21 @@
             document.getElementById('g-body-battery').value = g.bodyBattery;
         if (g.hrv)
             document.getElementById('g-hrv').value = g.hrv;
-        // Restore bedtime / wake time
-        if (g.bedtime) {
+        // Restore hrs/mins from stored decimal
+        if (g.bedtime)
             document.getElementById('g-bedtime').value = g.bedtime;
-        }
-        if (g.wakeTime) {
-            document.getElementById('g-waketime').value = g.wakeTime;
-        }
-        if (g.bedtime || g.wakeTime) {
+        if (g.waketime)
+            document.getElementById('g-waketime').value = g.waketime;
+        if (g.bedtime && g.waketime)
             calcSleepDuration();
-        }
         if (g.readiness)
             document.getElementById('g-readiness').value = g.readiness;
         if (g.readinessScore)
             document.getElementById('g-readiness-score').value = g.readinessScore;
+        if (g.rem)
+            document.getElementById('g-rem').value = g.rem;
+        if (g.deep)
+            document.getElementById('g-deep').value = g.deep;
         if (g.weight)
             document.getElementById('g-weight').value = g.weight;
         Object.assign(STATE.garmin, g);
@@ -2971,11 +2996,13 @@
         g.sleepScore = parseFloat(document.getElementById('g-sleep-score').value) || null;
         g.bodyBattery = parseFloat(document.getElementById('g-body-battery').value) || null;
         g.hrv = parseFloat(document.getElementById('g-hrv').value) || null;
-        g.bedtime = document.getElementById('g-bedtime').value || null;
-        g.wakeTime = document.getElementById('g-waketime').value || null;
         g.sleepHours = getSleepDecimal();
+        g.bedtime = document.getElementById('g-bedtime').value || null;
+        g.waketime = document.getElementById('g-waketime').value || null;
         g.readiness = document.getElementById('g-readiness').value;
         g.readinessScore = parseInt(document.getElementById('g-readiness-score').value) || null;
+        g.rem = parseInt(document.getElementById('g-rem').value) || null;
+        g.deep = parseInt(document.getElementById('g-deep').value) || null;
         g.weight = parseFloat(document.getElementById('g-weight').value) || null;
         const fallbackOpen = document.getElementById('fallback-section').classList.contains('open');
         const ready = fallbackOpen ? (STATE.manual.quality > 0 && STATE.manual.energy > 0) : (g.sleepScore !== null || g.bodyBattery !== null || g.readiness !== '');
@@ -3044,8 +3071,7 @@
         if (g.sleepHours) {
             const h = Math.floor(g.sleepHours);
             const mn = Math.round((g.sleepHours - h) * 60);
-            const timeStr = g.bedtime && g.wakeTime ? ` (${g.bedtime}→${g.wakeTime})` : '';
-            chips += `<span class="chip chip-garmin">${h}h ${mn}m sleep${timeStr}</span>`;
+            chips += `<span class="chip chip-garmin">${h}h ${mn}m sleep</span>`;
         }
         if (g.readiness) {
             const cls = g.readiness === 'prime' || g.readiness === 'high' ? 'chip-ready-prime' : g.readiness === 'moderate' ? 'chip-ready-moderate' : 'chip-ready-low';
@@ -3117,6 +3143,8 @@
     async function generateBriefing() {
         const g = STATE.garmin;
         g.sleepHours = getSleepDecimal();
+        g.bedtime = document.getElementById('g-bedtime').value || null;
+        g.waketime = document.getElementById('g-waketime').value || null;
         const m = STATE.manual;
         const fallbackOpen = document.getElementById('fallback-section').classList.contains('open');
         const nutType = getNutritionType();
@@ -3183,12 +3211,12 @@
                 const mn = Math.round((g.sleepHours - h) * 60);
                 dataSection += `- Sleep Duration: ${h}h ${mn}m (${g.sleepHours} hrs)\n`;
             }
-            if (g.bedtime)
-                dataSection += `- Bedtime: ${g.bedtime}\n`;
-            if (g.wakeTime)
-                dataSection += `- Wake time: ${g.wakeTime}\n`;
             if (g.hrv !== null)
                 dataSection += `- HRV Status (7-day avg): ${g.hrv}ms\n`;
+            if (g.rem)
+                dataSection += `- REM sleep: ${g.rem} minutes\n`;
+            if (g.deep)
+                dataSection += `- Deep sleep: ${g.deep} minutes\n`;
             if (g.bodyBattery !== null)
                 dataSection += `- Body Battery on waking: ${g.bodyBattery}/100\n`;
             const niggleData = getNiggleData();
@@ -3244,7 +3272,11 @@
         Respond ONLY as a JSON object, no markdown, no backticks:
         {"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing"},"focus":"one sharp sentence"}
 
-        WORKOUT RULES: Mon=full push, bench ~82-85% e1RM. Wed=full pull, CTB pull ups max reps, negatives 4-5sec. Sat=run segments then legs. Tue=Z2 broken into warmup/main/cooldown. Thu=full intervals warmup+work+recovery+cooldown. Fri=2-3 light recovery items. Sun=6-8 yoga poses with hold times for runner/lifter. Scale down if readiness low.`;
+        WORKOUT RULES — use EXACTLY these set/rep schemes to match the lift logger:
+        Monday Push: Bench 4x6-8, OHP 3x8-10, Incline DB 3x10-12, Lateral raises 3x15, Tricep dips 3x10-15. Bench load ~82-85% e1RM.
+        Wednesday Pull: CTB pull ups 4x max reps, Archer pull ups 3x4-6 each side, Slow negatives 3x5 (4-5sec), Barbell rows 4x8-10, Face pulls 3x15, Bicep curls 3x10-12.
+        Saturday Legs: Squats 4x8-10, RDLs 3x10-12, Bulgarian split squats 3x8-10 each, Calf raises 3x20, Hip flexor/glute 2x15.
+        Tuesday: Z2 warmup/main/cooldown. Thursday: intervals warmup+work+recovery+cooldown. Friday: 2-3 light recovery. Sunday: 6-8 yoga poses. Scale down if readiness low.`;
 
         const msgs = ['Generating your briefing...', 'Calibrating session...', 'Almost ready...'];
         let li = 0;
@@ -3313,28 +3345,6 @@
         }
     }
 
-    // Fallback workout display in briefing — uses same WORKOUTS constants as lift logger
-    // This ensures briefing and logger always show the same rep targets
-    function buildFallbackWorkoutRows() {
-        const exercises = WORKOUTS[dayName];
-        if (!exercises || exercises.length === 0)
-            return '';
-        let rows = '';
-        exercises.forEach(function(ex, i) {
-            const parts = ex.target.match(/^(\d+\s*sets?)\s*[x×]\s*(.+)$/i);
-            const setsStr = parts ? parts[1] : ex.target;
-            const repsStr = parts ? parts[2] : '';
-            const border = i > 0 ? 'border-top:1px solid var(--border)' : '';
-            rows += '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:.6rem 0;' + border + '">'
-            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + ex.name + '</div>'
-            + '<div style="text-align:right;flex-shrink:0">'
-            + '<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">' + setsStr + '</div>'
-            + (repsStr ? '<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2)">' + repsStr + '</div>' : '')
-            + '</div></div>';
-        });
-        return '<div style="border-top:1px solid var(--border);padding-top:.85rem;margin-top:.85rem">' + rows + '</div>';
-    }
-
     // ── RENDER BRIEFING ──
     function buildBriefingScreen(b, macros, g, cached) {
         document.getElementById('loading-state').style.display = 'none';
@@ -3363,7 +3373,7 @@
                   ${w.load ? `<div style="font-size:12px;font-family:var(--font-mono);color:var(--accent);font-weight:500">${w.load}</div>` : ''}
                 </div>
               </div>`).join('')}
-            </div>` : buildFallbackWorkoutRows();
+            </div>` : '';
 
         const container = document.getElementById('briefing-content');
         container.innerHTML = `
@@ -3444,8 +3454,28 @@
                 const nutType = getNutritionType();
                 buildBriefingScreen(today.briefing, MACROS[nutType], today.garmin || {}, true);
                 showScreen('briefing');
+                // Show monday section if it exists
+                const mondaySec = document.getElementById('monday-section');
+                if (mondaySec) {
+                    if (isMonday) {
+                        mondaySec.style.display = 'block';
+                        if (today.mondayBriefing)
+                            renderMondayBriefing(today.mondayBriefing);
+                        else
+                            generateMondayBriefing();
+                    } else {
+                        // Show last Monday's briefing any day of the week
+                        const lastMonday = getThisMonday();
+                        const mondayData = appData[lastMonday];
+                        if (mondayData && mondayData.mondayBriefing) {
+                            mondaySec.style.display = 'block';
+                            renderMondayBriefing(mondayData.mondayBriefing);
+                        }
+                    }
+                }
             } else {
                 showScreen('checkin');
+                hideTabBar();
             }
         } else if (tab === 'log') {
             buildLogScreen();
@@ -3459,104 +3489,6 @@
             buildBenchmarkScreen();
             showScreen('benchmark');
         }
-    }
-
-    // ── LIFT LOGGER SESSION STATE (persists across tab switches) ──
-    const LOGGER_SK = 'pos_logger_state';
-
-    function saveLoggerState() {
-        const exercises = WORKOUTS[dayName];
-        if (!exercises)
-            return;
-        const state = {
-            day: dayName,
-            date: todayKey,
-            note: '',
-            sets: {}
-        };
-        const noteEl = document.getElementById('session-note');
-        if (noteEl)
-            state.note = noteEl.value;
-        exercises.forEach(ex => {
-            const container = document.getElementById('sets-' + ex.key);
-            if (!container)
-                return;
-            state.sets[ex.key] = [];
-            Array.from(container.children).forEach((row, i) => {
-                const w = document.getElementById(`w-${ex.key}-${i + 1}`);
-                const r = document.getElementById(`r-${ex.key}-${i + 1}`);
-                state.sets[ex.key].push({
-                    weight: w ? w.value : '',
-                    reps: r ? r.value : ''
-                });
-            });
-        });
-        lss(LOGGER_SK, JSON.stringify(state));
-    }
-
-    function restoreLoggerState() {
-        try {
-            const raw = ls(LOGGER_SK);
-            if (!raw)
-                return false;
-            const state = JSON.parse(raw);
-            // Only restore if same day
-            if (state.day !== dayName || state.date !== todayKey) {
-                localStorage.removeItem(LOGGER_SK);
-                return false;
-            }
-            // Restore note
-            const noteEl = document.getElementById('session-note');
-            if (noteEl && state.note)
-                noteEl.value = state.note;
-            // Restore sets per exercise
-            if (state.sets) {
-                Object.entries(state.sets).forEach(([key, sets]) => {
-                    if (!sets || sets.length === 0)
-                        return;
-                    const container = document.getElementById('sets-' + key);
-                    if (!container)
-                        return;
-                    // Clear default set(s) and rebuild from saved state
-                    container.innerHTML = '';
-                    sets.forEach((s, i) => {
-                        const setNum = i + 1;
-                        const row = document.createElement('div');
-                        row.className = 'set-row';
-                        row.id = `set-${key}-${setNum}`;
-                        row.innerHTML = `
-                                    <div class="set-num">${setNum}</div>
-                                    <input class="set-input" type="number" placeholder="kg" id="w-${key}-${setNum}" min="0" step="0.5" value="${s.weight || ''}">
-                                    <input class="set-input" type="number" placeholder="reps" id="r-${key}-${setNum}" min="0" value="${s.reps || ''}">
-                                    <button class="set-delete" onclick="deleteSet('${key}',${setNum})">×</button>
-                                  `;
-                        // Auto-save on any input change
-                        row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', saveLoggerState));
-                        container.appendChild(row);
-                    });
-                    // Ensure exercise body is open if it has data
-                    const hasData = sets.some(s => s.weight || s.reps);
-                    if (hasData) {
-                        const body = document.getElementById('body-' + key);
-                        const chev = document.getElementById('chev-' + key);
-                        if (body && !body.classList.contains('open')) {
-                            body.classList.add('open');
-                        }
-                        if (chev) {
-                            chev.classList.add('open');
-                            chev.textContent = '↑';
-                        }
-                    }
-                });
-            }
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    function clearLoggerState() {
-        localStorage.removeItem(LOGGER_SK);
     }
 
     // ── LIFT LOGGER ──
@@ -3992,16 +3924,48 @@
         if (noteWrap)
             noteWrap.style.display = 'block';
 
-        // Pre-populate first set for each exercise
-        exercises.forEach(ex => addSet(ex.key));
-
-        // Try to restore previously entered state (survives tab switches)
-        restoreLoggerState();
-
-        // Wire auto-save on note field
-        const noteEl = document.getElementById('session-note');
-        if (noteEl)
-            noteEl.addEventListener('input', saveLoggerState);
+        // 1. Try to restore cached lift state (tab switch recovery)
+        const restored = restoreLiftCache();
+        if (!restored) {
+            // 2. Try to pre-populate from today's briefing workout JSON
+            const appDataLog = getAppData();
+            const todayLog = appDataLog[todayKey];
+            const briefingWorkout = todayLog && todayLog.briefing && todayLog.briefing.training && todayLog.briefing.training.workout;
+            if (briefingWorkout && briefingWorkout.length > 0) {
+                exercises.forEach(ex => {
+                    // Find matching exercise in briefing by name similarity
+                    const match = briefingWorkout.find(w =>
+                    w.exercise && ex.name && (
+                    w.exercise.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
+                    ex.name.toLowerCase().includes(w.exercise.split(' ')[0].toLowerCase())
+                    )
+                    );
+                    addSet(ex.key); // Always add at least one set
+                    if (match) {
+                        // Pre-fill load from briefing
+                        setTimeout(() => {
+                            const wInput = document.getElementById('w-' + ex.key + '-1');
+                            const rInput = document.getElementById('r-' + ex.key + '-1');
+                            if (wInput && match.load) {
+                                // Extract number from load string e.g. "72-75kg" → "72"
+                                const loadNum = parseFloat(match.load);
+                                if (!isNaN(loadNum))
+                                    wInput.value = loadNum;
+                            }
+                            if (rInput && match.reps) {
+                                // Extract lower bound from reps e.g. "6-8 reps" → "6"
+                                const repsNum = parseInt(match.reps);
+                                if (!isNaN(repsNum))
+                                    rInput.value = repsNum;
+                            }
+                        }, 100);
+                    }
+                });
+            } else {
+                // 3. Fall back to empty sets from WORKOUTS constants
+                exercises.forEach(ex => addSet(ex.key));
+            }
+        }
     }
 
     function toggleSwapPanel(key) {
@@ -4040,6 +4004,75 @@
         setTimeout(() => toggleExercise(originalKey), 50);
     }
 
+    // ── LIFT LOGGER STATE PERSISTENCE ──
+    function saveLogState() {
+        try {
+            const state = {
+                day: dayName,
+                date: todayKey,
+                swaps: SESSION_SWAPS,
+                sets: {}
+            };
+            const exercises = WORKOUTS[dayName] || [];
+            exercises.forEach(ex => {
+                const container = document.getElementById('sets-' + ex.key);
+                if (!container)
+                    return;
+                const sets = [];
+                Array.from(container.children).forEach((row, i) => {
+                    const w = document.getElementById('w-' + ex.key + '-' + (i + 1));
+                    const r = document.getElementById('r-' + ex.key + '-' + (i + 1));
+                    sets.push({
+                        weight: w ? w.value : '',
+                        reps: r ? r.value : ''
+                    });
+                });
+                state.sets[ex.key] = sets;
+            });
+            const noteEl = document.getElementById('session-note');
+            if (noteEl)
+                state.note = noteEl.value;
+            localStorage.setItem('pos_lift_state', JSON.stringify(state));
+        } catch (e) {}
+    }
+
+    function restoreLogState() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('pos_lift_state') || '{}');
+            if (!saved.day || saved.day !== dayName || saved.date !== todayKey)
+                return false;
+            // Restore swaps
+            if (saved.swaps)
+                Object.assign(SESSION_SWAPS, saved.swaps);
+            // Restore note
+            const noteEl = document.getElementById('session-note');
+            if (noteEl && saved.note)
+                noteEl.value = saved.note;
+            // Restore sets
+            if (saved.sets) {
+                Object.entries(saved.sets).forEach(([key, sets]) => {
+                    const container = document.getElementById('sets-' + key);
+                    if (!container)
+                        return;
+                    // Clear auto-added first set
+                    container.innerHTML = '';
+                    sets.forEach((s, i) => {
+                        addSet(key);
+                        const w = document.getElementById('w-' + key + '-' + (i + 1));
+                        const r = document.getElementById('r-' + key + '-' + (i + 1));
+                        if (w)
+                            w.value = s.weight || '';
+                        if (r)
+                            r.value = s.reps || '';
+                    });
+                });
+            }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function toggleExercise(key) {
         const body = document.getElementById('body-' + key);
         const chev = document.getElementById('chev-' + key);
@@ -4056,12 +4089,10 @@
         row.id = `set-${key}-${setNum}`;
         row.innerHTML = `
             <div class="set-num">${setNum}</div>
-            <input class="set-input" type="number" placeholder="kg" id="w-${key}-${setNum}" min="0" step="0.5">
-            <input class="set-input" type="number" placeholder="reps" id="r-${key}-${setNum}" min="0">
+            <input class="set-input" type="number" placeholder="kg" id="w-${key}-${setNum}" min="0" step="0.5" oninput="saveLogState()">
+            <input class="set-input" type="number" placeholder="reps" id="r-${key}-${setNum}" min="0" oninput="saveLogState()">
             <button class="set-delete" onclick="deleteSet('${key}',${setNum})">×</button>
           `;
-        // Auto-save state on input change
-        row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', saveLoggerState));
         container.appendChild(row);
         // Auto-expand when first set added
         const body = document.getElementById('body-' + key);
@@ -4078,7 +4109,6 @@
         Array.from(container.children).forEach((row, i) => {
             row.querySelector('.set-num').textContent = i + 1;
         });
-        saveLoggerState();
     }
 
     function getPreviousSession(day, appData) {
@@ -4091,6 +4121,85 @@
                 return entry.session.exercises;
         }
         return null;
+    }
+
+    function saveLiftCache() {
+        // Auto-save current lift state to localStorage so tab switches don't lose data
+        const exercises = WORKOUTS[dayName];
+        if (!exercises)
+            return;
+        const cache = {
+            day: dayName,
+            date: todayKey,
+            sets: {}
+        };
+        exercises.forEach(ex => {
+            const container = document.getElementById('sets-' + ex.key);
+            if (!container)
+                return;
+            const sets = [];
+            Array.from(container.children).forEach((row, i) => {
+                const w = document.getElementById('w-' + ex.key + '-' + (i + 1));
+                const r = document.getElementById('r-' + ex.key + '-' + (i + 1));
+                sets.push({
+                    weight: w ? w.value : '',
+                    reps: r ? r.value : ''
+                });
+            });
+            cache.sets[ex.key] = sets;
+        });
+        const noteEl = document.getElementById('session-note');
+        if (noteEl)
+            cache.note = noteEl.value;
+        lss(SK.liftCache, JSON.stringify(cache));
+    }
+
+    function restoreLiftCache() {
+        try {
+            const raw = ls(SK.liftCache);
+            if (!raw)
+                return false;
+            const cache = JSON.parse(raw);
+            if (cache.day !== dayName || cache.date !== todayKey)
+                return false;
+            // Restore sets for each exercise
+            const exercises = WORKOUTS[dayName];
+            if (!exercises)
+                return false;
+            exercises.forEach(ex => {
+                const savedSets = cache.sets[ex.key];
+                if (!savedSets || savedSets.length === 0)
+                    return;
+                const container = document.getElementById('sets-' + ex.key);
+                if (!container)
+                    return;
+                // Clear existing sets
+                container.innerHTML = '';
+                savedSets.forEach((s, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'set-row';
+                    row.id = 'set-' + ex.key + '-' + (i + 1);
+                    row.innerHTML = `
+                              <div class="set-num">${i + 1}</div>
+                              <input class="set-input" type="number" placeholder="kg" id="w-${ex.key}-${i + 1}" min="0" step="0.5" value="${s.weight || ''}">
+                              <input class="set-input" type="number" placeholder="reps" id="r-${ex.key}-${i + 1}" min="0" value="${s.reps || ''}">
+                              <button class="set-delete" onclick="deleteSet('${ex.key}',${i + 1})">×</button>
+                            `;
+                    container.appendChild(row);
+                });
+                // Auto-expand if has data
+                const hasData = savedSets.some(s => s.weight || s.reps);
+                if (hasData && !document.getElementById('body-' + ex.key).classList.contains('open')) {
+                    toggleExercise(ex.key);
+                }
+            });
+            const noteEl = document.getElementById('session-note');
+            if (noteEl && cache.note)
+                noteEl.value = cache.note;
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     function saveSession() {
@@ -4170,10 +4279,10 @@
         } else {
             banner.innerHTML = `<strong>Session saved.</strong> Tomorrow's briefing will use these numbers for progressive overload.`;
         }
+        localStorage.removeItem('pos_lift_state');
         document.getElementById('save-session-btn').textContent = 'Saved ✓';
         document.getElementById('save-session-btn').style.opacity = '0.5';
-        // Clear auto-saved logger state — session is now persisted to Drive
-        clearLoggerState();
+        localStorage.removeItem(SK.liftCache);
     }
 
     // ── DASHBOARD ──
@@ -4477,13 +4586,12 @@
 
     function buildWeekGrid(appData) {
         const container = document.getElementById('week-grid');
-        // Remove old detail if exists
-        const oldDetail = document.getElementById('week-detail');
-        if (oldDetail)
-            oldDetail.remove();
-        const detail = document.createElement('div');
-        detail.className = 'week-detail';
-        detail.id = 'week-detail';
+        // Detail div is permanent in HTML — just reset it
+        const detail = document.getElementById('week-detail');
+        if (detail) {
+            detail.classList.remove('open');
+            detail.innerHTML = '';
+        }
 
         const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -4533,15 +4641,13 @@
         });
 
         container.innerHTML = html;
-        container.after(detail);
     }
 
     function toggleWeekDetail(elId, day, dateKey, sessionName, isToday, isPast) {
         const el = document.getElementById(elId);
-        // Always fetch live detail element from DOM (not a stale closure reference)
         const detail = document.getElementById('week-detail');
         if (!detail)
-            return;
+            return; // safety check
         const isOpen = detail.classList.contains('open') && detail.dataset.day === day;
         // Remove selected from all days
         document.querySelectorAll('.week-day').forEach(d => d.classList.remove('selected'));
@@ -4553,7 +4659,7 @@
         if (el)
             el.classList.add('selected');
         detail.dataset.day = day;
-
+        detail.classList.add('open');
         const session = WEEK_SESSIONS[day];
         const label = isToday ? 'Today — ' : isPast ? 'Past — ' : 'Upcoming — ';
 
@@ -4607,6 +4713,7 @@
         }
 
         // Check for Strava run on this day
+        const latestRuns2 = Object.values(appData || {}).reduce((acc, v) => v && v._latestRuns ? v._latestRuns : acc, []);
         const allRuns = getAppData()._latestRuns || [];
         const dayRun = allRuns.find(r => r.date === dateKey);
         const runHtml = dayRun ? `<div style="margin-top:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
@@ -4628,7 +4735,9 @@
         // If dynamic plan exists use it, otherwise fall back to static template
         let finalWorkoutHtml = '';
         if (dayPlan) {
+            // Show dynamic Claude-generated plan
             finalWorkoutHtml = buildDayPlanHtml(dayPlan);
+            // Add Strava run data if available
             finalWorkoutHtml += runHtml;
             detail.innerHTML = `
                   <div class="week-detail-title">${label}${dayPlan.headline || session && session.short || day}</div>
@@ -4636,15 +4745,13 @@
                   <div class="week-detail-body">${finalWorkoutHtml}</div>
                 `;
         } else {
+            // Fall back to static template
             finalWorkoutHtml = workoutHtml + runHtml;
             detail.innerHTML = `
                   <div class="week-detail-title">${label}${session ? session.short : day}</div>
                   <div class="week-detail-body">${sessionName}${finalWorkoutHtml}</div>
                 `;
         }
-
-        // Open AFTER setting innerHTML so content is visible
-        detail.classList.add('open');
     }
 
     function buildWeeklyVolumeBar(appData) {
@@ -5094,7 +5201,7 @@
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-5',
-                    max_tokens: 1000,
+                    max_tokens: 4000,
                     messages: [{
                         role: 'user',
                         content: prompt
@@ -5104,8 +5211,30 @@
             if (!res.ok)
                 throw new Error('API error ' + res.status);
             const data = await res.json();
-            const raw = data.content[0].text.replace(/```json|```/g, '').trim();
-            const brief = JSON.parse(raw);
+            let raw = data.content[0].text.replace(/```json|```/g, '').trim();
+            // Truncation fallback — if response was cut off, try to extract valid JSON
+            let brief;
+            try {
+                brief = JSON.parse(raw);
+            } catch (e) {
+                // Try to close truncated JSON
+                const lastBrace = raw.lastIndexOf('}');
+                if (lastBrace > -1) {
+                    try {
+                        brief = JSON.parse(raw.substring(0, lastBrace + 1) + '}');
+                    } catch (e2) {
+                        // Extract what we can
+                        brief = {
+                            weekReview: raw.match(/"weekReview"\s*:\s*"([^"]+)"/)?.[1] || 'Weekly review generated.',
+                            thisWeekFocus: raw.match(/"thisWeekFocus"\s*:\s*"([^"]+)"/)?.[1] || 'Focus on consistent training.',
+                            keyInsight: raw.match(/"keyInsight"\s*:\s*"([^"]+)"/)?.[1] || '',
+                            weeklyVolume: raw.match(/"weeklyVolume"\s*:\s*"([^"]+)"/)?.[1] || '',
+                            goalProgress: raw.match(/"goalProgress"\s*:\s*"([^"]+)"/)?.[1] || '',
+                            weekPlan: {}
+                        };
+                    }
+                }
+            }
             // Save to Drive
             appData[todayKey] = appData[todayKey] || {
                 date: todayKey
@@ -5158,10 +5287,6 @@
     function showMondayLoading(show) {
         const loadEl = document.getElementById('monday-loading');
         const contentEl = document.getElementById('monday-content');
-        const sec = document.getElementById('monday-section');
-        // Always make sure the section itself is visible when we're using it
-        if (sec)
-            sec.style.display = 'block';
         if (loadEl)
             loadEl.style.display = show ? 'block' : 'none';
         if (contentEl)
@@ -5270,7 +5395,23 @@
         }
         const thisMonday = getThisMonday();
         const weekKeys = keys.filter(k => k >= thisMonday && k <= todayKey);
-        const weekSessions = weekKeys.filter(k => appData[k] && appData[k].session).length;
+        // Count sessions — check both appData and today's saved session
+        const weekSessions = weekKeys.filter(k => {
+            if (appData[k] && appData[k].session)
+                return true;
+            // Also check if today has a session saved that hasn't synced yet
+            if (k === todayKey) {
+                try {
+                    const liftState = localStorage.getItem('pos_lift_state');
+                    if (liftState) {
+                        const st = JSON.parse(liftState);
+                        if (st.date === todayKey && st.day === dayName)
+                            return false; // in progress, not saved
+                    }
+                } catch (e) {}
+            }
+            return false;
+        }).length;
 
         // Sessions target = 5 scheduled sessions Mon-Sat (Mon push, Tue run, Wed pull, Thu run, Sat double)
         const sessionTarget = 5;
@@ -5487,61 +5628,22 @@
 
     // ── INIT ──
     async function init() {
-        const token = ls(SK.accessToken);
-        const expiry = parseInt(ls(SK.tokenExpiry) || '0');
-        const tokenValid = token && Date.now() < expiry - 60000;
-
-        // If we have a valid token, try to load config from Drive first (restores keys if localStorage was wiped)
-        if (tokenValid) {
-            const apiKey = ls(SK.apiKey);
-            const clientId = ls(SK.clientId);
-            if (!apiKey || !clientId) {
-                // Keys missing but token valid — restore config from Drive
-                await loadConfigFromDrive(token);
-            }
-        }
-
-        const apiKey = ls(SK.apiKey);
-        const clientId = ls(SK.clientId);
+        let apiKey = ls(SK.apiKey);
+        let clientId = ls(SK.clientId);
+        // If localStorage cleared, try restoring config from Drive
         if (!apiKey || !clientId) {
-            // No keys and no valid token — need full setup
-            if (!tokenValid) {
+            const restored = await loadConfigFromDrive();
+            if (restored) {
+                apiKey = ls(SK.apiKey);
+                clientId = ls(SK.clientId);
+            } else {
                 showScreen('setup');
                 return;
             }
-            // Has token but config load failed — try silent re-auth to get fresh token, then retry config
-            const wait = setInterval(() => {
-                if (typeof google !== 'undefined') {
-                    clearInterval(wait);
-                    initGoogleAuth();
-                    if (tokenClient) {
-                        tokenClient.callback = async (resp) => {
-                            if (resp.error) {
-                                showScreen('setup');
-                                return;
-                            }
-                            lss(SK.accessToken, resp.access_token);
-                            lss(SK.tokenExpiry, Date.now() + (resp.expires_in * 1000));
-                            const restored = await loadConfigFromDrive(resp.access_token);
-                            if (!restored || !ls(SK.apiKey)) {
-                                showScreen('setup');
-                                return;
-                            }
-                            await loadFromDrive();
-                            refreshStravaBackground();
-                            if (document.querySelector('.screen.active').id !== 'screen-briefing')
-                                showScreen('checkin');
-                        };
-                        tokenClient.requestAccessToken({
-                            prompt: ''
-                        });
-                    } else {
-                        showScreen('setup');
-                    }
-                }
-            }, 200);
-            return;
         }
+        const token = ls(SK.accessToken);
+        const expiry = parseInt(ls(SK.tokenExpiry) || '0');
+        const tokenValid = token && Date.now() < expiry - 60000;
 
         if (!tokenValid) {
             // Try silent re-auth first — only show auth screen if that fails
@@ -5581,6 +5683,7 @@
         // Only show checkin if briefing wasn't already loaded by restoreToday
         if (document.querySelector('.screen.active').id !== 'screen-briefing') {
             showScreen('checkin');
+            hideTabBar();
         }
     }
     window.addEventListener('load', init);
