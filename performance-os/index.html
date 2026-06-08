@@ -2188,6 +2188,151 @@
         border-radius: 8px;
         text-align: center;
         margin-top: .75rem
+    }/* SESSION HISTORY */
+    .history-session {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        margin-bottom: .75rem;
+        overflow: hidden
+    }
+
+    .history-session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        cursor: pointer
+    }
+
+    .history-session-left {
+        display: flex;
+        flex-direction: column;
+        gap: 3px
+    }
+
+    .history-session-type {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text)
+    }
+
+    .history-session-date {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .history-session-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px
+    }
+
+    .history-session-pr {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--accent);
+        background: rgba(200, 245, 96, .1);
+        border: 1px solid rgba(200, 245, 96, .2);
+        padding: 2px 8px;
+        border-radius: 20px
+    }
+
+    .history-session-sets {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .history-session-body {
+        display: none;
+        border-top: 1px solid var(--border);
+        padding: .75rem 1.25rem
+    }
+
+    .history-session-body.open {
+        display: block
+    }
+
+    .history-ex-row {
+        padding: .5rem 0;
+        border-bottom: 1px solid var(--border)
+    }
+
+    .history-ex-row:last-child {
+        border-bottom: none
+    }
+
+    .history-ex-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px
+    }
+
+    .history-ex-sets {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap
+    }
+
+    .history-set-chip {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted2);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 3px 8px;
+        border-radius: 6px
+    }
+
+    .history-set-chip.best {
+        border-color: rgba(200, 245, 96, .3);
+        color: var(--accent);
+        background: rgba(200, 245, 96, .07)
+    }
+
+    .history-note {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--muted2);
+        margin-top: .5rem;
+        font-style: italic
+    }
+
+    .history-empty {
+        text-align: center;
+        padding: 2rem;
+        font-size: 12px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .history-filter-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 1rem;
+        flex-wrap: wrap
+    }
+
+    .history-filter-btn {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted2);
+        cursor: pointer;
+        transition: all .15s
+    }
+
+    .history-filter-btn.active {
+        border-color: rgba(200, 245, 96, .4);
+        color: var(--accent);
+        background: rgba(200, 245, 96, .07)
     }
 
     .settings-link {
@@ -2547,10 +2692,13 @@
 
         <!-- LIFT LOGGER SCREEN -->
         <div class="screen" id="screen-log">
-            <div class="log-title">
-                Session
-                <br>
-                logger
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
+                <div class="log-title" style="margin-bottom:0">
+                    Session
+                    <br>
+                    logger
+                </div>
+                <button onclick="buildHistoryScreen();switchTab('history')" style="font-size:11px;font-family:var(--font-mono);color:var(--muted2);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:8px;cursor:pointer;margin-top:.25rem">history →</button>
             </div>
             <div class="log-meta" id="log-meta">—</div>
             <div id="log-content"></div>
@@ -2770,6 +2918,23 @@
                 <div id="plan-saved-msg" style="display:none" class="plan-saved-badge">✓ Plan saved — your Monday briefings will now reference this block</div>
                 <button class="cta-btn" style="background:transparent;color:var(--muted2);border:1px solid var(--border);margin-top:.5rem;font-size:13px" onclick="document.getElementById('plan-result').style.display='none';document.getElementById('plan-setup').style.display='block'">← Generate a different plan</button>
             </div>
+        </div>
+        <!-- SESSION HISTORY SCREEN -->
+        <div class="screen" id="screen-history">
+            <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
+                Session
+                <br>
+                History
+            </div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
+            <div class="history-filter-row">
+                <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
+                <button class="history-filter-btn" onclick="filterHistory('Monday',this)">Push</button>
+                <button class="history-filter-btn" onclick="filterHistory('Wednesday',this)">Pull</button>
+                <button class="history-filter-btn" onclick="filterHistory('Saturday',this)">Legs</button>
+            </div>
+            <div id="history-container"></div>
         </div>
     </div>
 
@@ -3709,7 +3874,7 @@
             buildLogScreen();
             showScreen('log');
         } else if (tab === 'dashboard') {
-            buildDashboard();
+            buildDashboard(); // getAppData() called fresh inside
             showScreen('dashboard');
         } else if (tab === 'calendar') {
             showScreen('calendar');
@@ -3718,6 +3883,8 @@
             showScreen('benchmark');
         } else if (tab === 'plan') {
             showScreen('plan');
+        } else if (tab === 'history') {
+            showScreen('history');
         }
     }
 
@@ -4512,6 +4679,12 @@
         localStorage.removeItem('pos_lift_state');
         document.getElementById('save-session-btn').textContent = 'Saved ✓';
         document.getElementById('save-session-btn').style.opacity = '0.5';
+        // Refresh streak counter immediately so dashboard shows this session
+        const freshData = getAppData();
+        if (document.getElementById('streak-container'))
+            buildStreakCounter(freshData);
+        if (document.getElementById('weekly-km-cell'))
+            buildWeeklyVolumeBar(freshData);
         localStorage.removeItem(SK.liftCache);
     }
 
@@ -6025,6 +6198,116 @@
         saveToDrive(appData);
         document.getElementById('plan-saved-msg').style.display = 'block';
         document.getElementById('plan-save-btn') && (document.querySelector('.plan-save-btn').style.display = 'none');
+    }
+
+    // ── SESSION HISTORY ──
+    let historyFilter = 'all';
+
+    function filterHistory(filter, btn) {
+        historyFilter = filter;
+        document.querySelectorAll('.history-filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn)
+            btn.classList.add('active');
+        buildHistoryScreen();
+    }
+
+    function buildHistoryScreen() {
+        const container = document.getElementById('history-container');
+        if (!container)
+            return;
+        const appData = getAppData();
+
+        // Gather all sessions from stored data
+        const sessions = [];
+        Object.keys(appData).filter(k => !k.startsWith('_')).sort().reverse().forEach(k => {
+            const entry = appData[k];
+            if (entry && entry.session && entry.session.exercises) {
+                sessions.push({
+                    date: k,
+                    session: entry.session
+                });
+            }
+        });
+
+        // Filter
+        const filtered = historyFilter === 'all' ? sessions : sessions.filter(s => s.session.day === historyFilter);
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="history-empty">No sessions logged yet.<br>Complete a session and tap Save to see it here.</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map((s, idx) => {
+            const session = s.session;
+            const dateObj = new Date(s.date);
+            const dateLabel = dateObj.toLocaleDateString('en-SG', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
+
+            // Count total sets and find best lifts
+            let totalSets = 0;
+            let bestBench = 0;
+            let bestBenchReps = 0;
+            const exRows = Object.values(session.exercises || {}).map(ex => {
+                const sets = ex.sets || [];
+                if (!sets.length)
+                    return '';
+                totalSets += sets.length;
+
+                // Find best set (highest weight)
+                const maxWeight = Math.max(...sets.filter(s => s.weight).map(s => s.weight), 0);
+                if (ex.name && ex.name.toLowerCase().includes('bench') && maxWeight > bestBench) {
+                    bestBench = maxWeight;
+                    bestBenchReps = sets.find(s => s.weight === maxWeight)?.reps || 0;
+                }
+
+                const setChips = sets.map((set, i) => {
+                    const isMax = set.weight && set.weight === maxWeight && maxWeight > 0;
+                    const label = set.weight ? `${set.weight}kg × ${set.reps}` : `${set.reps} reps`;
+                    return `<span class="history-set-chip${isMax ? ' best' : ''}">${label}</span>`;
+                }).join('');
+
+                return `<div class="history-ex-row">
+                        <div class="history-ex-name">${ex.name}${ex.swapped ? ' <span style="font-size:9px;color:var(--accent2)">(swapped)</span>' : ''}</div>
+                        <div class="history-ex-sets">${setChips}</div>
+                      </div>`;
+            }).join('');
+
+            // Calculate 1RM for bench if available
+            let benchNote = '';
+            if (bestBench > 0 && bestBenchReps > 0) {
+                const e1rm = bestBenchReps === 1 ? bestBench : Math.round(bestBench * (36 / (37 - Math.min(bestBenchReps, 36))) * 10) / 10;
+                benchNote = `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-top:.5rem">Bench e1RM: ~${e1rm}kg</div>`;
+            }
+
+            const noteHtml = session.note ? `<div class="history-note">"${session.note}"</div>` : '';
+
+            return `<div class="history-session">
+                  <div class="history-session-header" onclick="toggleHistorySession('hsess-${idx}')">
+                    <div class="history-session-left">
+                      <div class="history-session-type">${session.day} — ${session.day === 'Monday' ? 'Push' : session.day === 'Wednesday' ? 'Pull' : 'Legs'}</div>
+                      <div class="history-session-date">${dateLabel}</div>
+                    </div>
+                    <div class="history-session-right">
+                      ${bestBench > 0 ? `<div class="history-session-pr">🏋 ${bestBench}kg</div>` : ''}
+                      <div class="history-session-sets">${totalSets} sets</div>
+                    </div>
+                  </div>
+                  <div class="history-session-body" id="hsess-${idx}">
+                    ${exRows}
+                    ${benchNote}
+                    ${noteHtml}
+                  </div>
+                </div>`;
+        }).join('');
+    }
+
+    function toggleHistorySession(id) {
+        const el = document.getElementById(id);
+        if (el)
+            el.classList.toggle('open');
     }
 
     // ── INIT ──
