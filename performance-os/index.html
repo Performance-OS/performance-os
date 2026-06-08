@@ -3545,7 +3545,10 @@
         // Save check-in data
         const appData = getAppData();
         const niggle = getNiggleData();
+        // Merge with existing today data — preserve session, benchmarks etc.
+        const existingToday = appData[todayKey] || {};
         appData[todayKey] = {
+            ...existingToday,
             date: todayKey,
             garmin: g,
             manual: m,
@@ -3703,8 +3706,12 @@
             const data = await res.json();
             const raw = data.content[0].text.replace(/```json|```/g, '').trim();
             const brief = JSON.parse(raw);
-            // Save briefing — prevents regeneration tomorrow
+            // Save briefing — merge carefully to preserve session data
             const appData2 = getAppData();
+            if (!appData2[todayKey])
+                appData2[todayKey] = {
+                    date: todayKey
+                };
             appData2[todayKey].briefing = brief;
             if (stravaRuns)
                 appData2[todayKey].stravaRuns = stravaRuns;
@@ -3816,7 +3823,11 @@
     async function forceRegenerate() {
         const appData = getAppData();
         if (appData[todayKey]) {
+            // Only delete the briefing — preserve session, garmin, everything else
             delete appData[todayKey].briefing;
+            delete appData[todayKey].stravaRuns;
+            delete appData[todayKey].stravaPBs;
+            delete appData[todayKey].stravaPredictions;
             lss(SK.data, JSON.stringify(appData));
             saveToDrive(appData);
         }
