@@ -6833,7 +6833,7 @@
                 <div class="goal-edit-name">${g.name}</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span class="goal-edit-type">${g.type || 'custom'}</span>
-                  ${g.type === 'custom' ? `<button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>` : ''}
+                  <button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>
                 </div>
               </div>
               <div class="goal-edit-row">
@@ -6860,16 +6860,20 @@
     function addCustomGoal() {
         const appData = getAppData();
         const goals = getGoals();
-        goals.push({
-            key: 'custom_' + Date.now(),
-            name: 'Custom Goal',
-            type: 'custom',
-            current: null,
-            target: null,
-            unit: 'kg',
-            lower: false,
-            enabled: true
-        });
+        const name=prompt('Goal name (e.g. Squat 140kg, 10K sub-45min):');
+  if(!name) return;
+  const unitChoice=prompt('Unit type — type: kg, reps, or time');
+  const unit=['kg','reps','time'].includes(unitChoice)?unitChoice:'kg';
+  goals.push({
+    key:'custom_'+Date.now(),
+    name:name,
+    type:'custom',
+    current:null,
+    target:null,
+    unit:unit,
+    lower:unit==='time',
+    enabled:true
+  });
         saveGoalsToData(goals);
         buildGoalsEditor();
     }
