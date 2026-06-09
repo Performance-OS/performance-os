@@ -5567,7 +5567,26 @@
         const weekSummary = buildWeekSummary(appData);
         const stravaRuns = appData._latestRuns || [];
 
-        const prompt = `You are Alex's weekly performance coach AI. Today is Monday ${dateStr} — weekly review and planning day.
+// Get actual bench 1RM from logs
+  const allKeys2=Object.keys(appData).filter(k=>!k.startsWith('_')).sort().reverse();
+  let actualBench1RM=null;
+  for(const k of allKeys2){
+    const e=appData[k];
+    if(e&&e.session&&e.session.exercises&&e.session.exercises.bench){
+      const sets=e.session.exercises.bench.sets||[];
+      sets.forEach(s=>{
+        if(s.weight&&s.reps){
+          const e1rm=s.reps===1?s.weight:Math.round(s.weight*(36/(37-Math.min(s.reps,36)))*10)/10;
+          if(!actualBench1RM||e1rm>actualBench1RM) actualBench1RM=e1rm;
+        }
+      });
+      if(actualBench1RM) break;
+    }
+  }
+  const benchDisplay=actualBench1RM?`${actualBench1RM}kg (from logged sessions)`:'~88-92kg (estimated)';
+
+  const prompt=`You are Alex's weekly performance coach AI. Today is Monday ${dateStr} — weekly review and planning day.
+
 
         LAST WEEK SUMMARY:
         ${weekSummary}
