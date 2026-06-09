@@ -2337,6 +2337,187 @@
         border-color: rgba(200, 245, 96, .4);
         color: var(--accent);
         background: rgba(200, 245, 96, .07)
+    }/* EDITABLE GOALS */
+    .goals-screen-title {
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: .25rem
+    }
+
+    .goal-edit-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1rem 1.25rem;
+        margin-bottom: .75rem
+    }
+
+    .goal-edit-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: .75rem
+    }
+
+    .goal-edit-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text)
+    }
+
+    .goal-edit-type {
+        font-size: 9px;
+        font-family: var(--font-mono);
+        color: var(--muted);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: 2px 8px;
+        border-radius: 20px
+    }
+
+    .goal-edit-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: .5rem
+    }
+
+    .goal-edit-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px
+    }
+
+    .goal-edit-label {
+        font-size: 9px;
+        font-family: var(--font-mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .08em
+    }
+
+    .goal-edit-input {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 13px;
+        outline: none;
+        transition: border-color .15s
+    }
+
+    .goal-edit-input:focus {
+        border-color: rgba(200, 245, 96, .4)
+    }
+
+    .goal-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: .5rem
+    }
+
+    .goal-toggle-label {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .goal-toggle input[type=checkbox] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--accent)
+    }
+
+    .add-goal-btn {
+        width: 100%;
+        padding: 12px;
+        background: transparent;
+        border: 1px dashed var(--border);
+        border-radius: var(--r);
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all .15s;
+        margin-bottom: 1rem
+    }
+
+    .add-goal-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent)
+    }
+
+    .goal-delete-btn {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--danger);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0
+    }/* PROFILE SETUP */
+    .profile-section {
+        margin-bottom: 1.5rem
+    }
+
+    .profile-section-title {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        margin-bottom: .75rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid var(--border)
+    }
+
+    .profile-field {
+        margin-bottom: .75rem
+    }
+
+    .profile-label {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--muted2);
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        margin-bottom: .4rem
+    }
+
+    .profile-input {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 13px;
+        outline: none;
+        transition: border-color .15s
+    }
+
+    .profile-input:focus {
+        border-color: rgba(200, 245, 96, .4)
+    }
+
+    .profile-select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 13px;
+        outline: none;
+        -webkit-appearance: none;
+        cursor: pointer
     }
 
     .settings-link {
@@ -2502,12 +2683,12 @@
                     <div class="sleep-hm-row" style="gap:12px;align-items:center">
                         <div class="sleep-hm-wrap" style="flex:1">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Bedtime</div>
-                            <input type="time" id="g-bedtime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                            <input type="time" id="g-bedtime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
                         </div>
                         <div style="font-size:18px;color:var(--muted);font-family:var(--font-mono);padding-top:16px">→</div>
                         <div class="sleep-hm-wrap" style="flex:1">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Wake time</div>
-                            <input type="time" id="g-waketime" style="width:100%;background:transparent;border:none;outline:none;font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--accent);padding:0;-webkit-appearance:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                            <input type="time" id="g-waketime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
                         </div>
                         <div class="sleep-hm-wrap" style="flex:0 0 auto;text-align:right">
                             <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Duration</div>
@@ -2748,6 +2929,34 @@
             <div class="dash-section-label" style="margin-top:1.5rem">Recovery Trend</div>
             <div id="hrv-container"></div>
 
+            <!-- PROFILE BUTTON -->
+            <div style="margin-top:.75rem;margin-bottom:.75rem">
+                <button onclick="buildProfileScreen();switchTab('profile')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>Profile</span>
+                    </div>
+                    <span style="color:var(--muted);font-size:12px">edit details →</span>
+                </button>
+            </div>
+
+            <!-- GOALS EDIT BUTTON -->
+            <div style="margin-top:.75rem;margin-bottom:.75rem">
+                <button onclick="buildGoalsEditor();switchTab('goals')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        <span>Edit Goals</span>
+                    </div>
+                    <span style="color:var(--muted);font-size:12px">customise →</span>
+                </button>
+            </div>
+
             <!-- BENCHMARK BUTTON -->
             <div style="margin-top:1.5rem;margin-bottom:.75rem">
                 <button onclick="buildBenchmarkScreen();showScreen('benchmark')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -2937,6 +3146,81 @@
             </div>
             <div id="history-container"></div>
         </div>
+        <!-- EDITABLE GOALS SCREEN -->
+        <div class="screen" id="screen-goals">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div class="goals-screen-title">Edit Goals</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Changes update your dashboard tiles automatically</div>
+            <div id="goals-edit-container"></div>
+            <button class="add-goal-btn" onclick="addCustomGoal()">+ Add custom goal</button>
+            <button class="cta-btn" onclick="saveGoals()">Save goals →</button>
+            <div id="goals-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Goals saved</div>
+        </div>
+        <!-- PROFILE SCREEN -->
+        <div class="screen" id="screen-profile">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Profile</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your details feed into every briefing</div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Personal</div>
+                <div class="profile-field">
+                    <div class="profile-label">Name</div>
+                    <input class="profile-input" id="prof-name" type="text" placeholder="Alex">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="profile-field">
+                        <div class="profile-label">Age</div>
+                        <input class="profile-input" id="prof-age" type="number" placeholder="24">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Weight (kg)</div>
+                        <input class="profile-input" id="prof-weight" type="number" placeholder="71.3" step="0.1">
+                    </div>
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Location</div>
+                    <input class="profile-input" id="prof-location" type="text" placeholder="Singapore">
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Training</div>
+                <div class="profile-field">
+                    <div class="profile-label">Training base / area</div>
+                    <input class="profile-input" id="prof-base" type="text" placeholder="Bedok Reservoir Road">
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Occupation</div>
+                    <input class="profile-input" id="prof-job" type="text" placeholder="Desk job Mon-Fri">
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Run Zones (bpm)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="profile-field">
+                        <div class="profile-label">Z2 Low</div>
+                        <input class="profile-input" id="prof-z2low" type="number" placeholder="132">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z2 High</div>
+                        <input class="profile-input" id="prof-z2high" type="number" placeholder="164">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z3 Low</div>
+                        <input class="profile-input" id="prof-z3low" type="number" placeholder="165">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z4 High</div>
+                        <input class="profile-input" id="prof-z4high" type="number" placeholder="196">
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-btn" onclick="saveProfile()">Save profile →</button>
+            <div id="profile-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Profile saved — next briefing will use these details</div>
+        </div>
     </div>
 
     <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
@@ -3124,6 +3408,10 @@
         lss(SK.apiKey, ak);
         lss(SK.clientId, cid);
         lss(SK.stravaToken, st);
+        // Also save to cookies for persistence across Safari sessions
+        setCookie('c_' + SK.apiKey, ak);
+        setCookie('c_' + SK.clientId, cid);
+        setCookie('c_' + SK.stravaToken, st);
         // Save to Drive after Google auth completes — triggered in auth callback
         showScreen('auth');
         initGoogleAuth();
@@ -3145,6 +3433,8 @@
                 }
                 lss(SK.accessToken, resp.access_token);
                 lss(SK.tokenExpiry, Date.now() + (resp.expires_in * 1000));
+                setCookie('c_' + SK.accessToken, resp.access_token);
+                setCookie('c_' + SK.tokenExpiry, String(Date.now() + (resp.expires_in * 1000)));
                 showAuthStatus('Connected to Google Drive ✓', 'ok');
                 // Save config to Drive so it survives localStorage clearing
                 const ak = ls(SK.apiKey),
@@ -3645,7 +3935,7 @@
         if (fallbackOpen)
             dataSection += `\nMANUAL CHECK-IN:\n- Hours slept: ${parseFloat(document.getElementById('sleep-slider').value).toFixed(1)}\n- Sleep quality: ${m.quality}/5\n- Morning energy: ${m.energy}/5\n`;
 
-        const prompt = `You are Alex's personal performance coach AI. Today is ${dayName}, ${dateStr}. Alex is 24, based in Singapore. Heat and humidity always factor into running advice.
+        const prompt = `You are ${getProfile().name}'s personal performance coach AI. Today is ${dayName}, ${dateStr}. ${getProfile().name} is ${getProfile().age}, based in ${getProfile().location}. Heat and humidity always factor into running advice. Training base: ${getProfile().base}.
 
         ${dataSection}
         ${stravaSection}
@@ -3655,7 +3945,7 @@
 
         ALEX'S PROFILE:
         Goals: 1) Sub-19min 5K (current 19:35) 2) 100kg bench (~88-92kg e1RM, 75kg x6-8) 3) Muscle ups (10-15 pull ups now) 4) Sub-1:30 HM 5) Sub-3:30 marathon
-        Zones: Z1<131, Z2=132-164 (easy 132-148), Z3=165-180, Z4=181-196, Z5=196+
+        Zones: Z1<${getProfile().z2low - 1}, Z2=${getProfile().z2low}-${getProfile().z2high} (easy ${getProfile().z2low}-148), Z3=${getProfile().z3low}-180, Z4=181-${getProfile().z4high}, Z5=${getProfile().z4high + 1}+
         Push: bench, OHP, incline DB, lateral raises, tricep dips
         Pull: chest-to-bar pull ups, archer pull ups, slow negatives, barbell rows, face pulls, curls (no weighted pull ups)
         Legs: squats, RDLs, Bulgarian split squats, calf raises, hip/glute work
@@ -3897,6 +4187,11 @@
             showScreen('plan');
         } else if (tab === 'history') {
             showScreen('history');
+        } else if (tab === 'goals') {
+            showScreen('goals');
+        } else if (tab === 'profile') {
+            buildProfileScreen();
+            showScreen('profile');
         }
     }
 
@@ -4786,7 +5081,7 @@
         }
     };
 
-    const GOALS = [
+    const GOALS_DEFAULT = [
     {
         key: '5k',
         name: '5K',
@@ -4888,6 +5183,8 @@
     }
 
     function buildGoals(appData) {
+        // Use editable goals if saved, otherwise defaults
+        const GOALS = getGoals();
         const container = document.getElementById('goals-container');
         const keys = Object.keys(appData).sort().reverse();
 
@@ -5567,26 +5864,7 @@
         const weekSummary = buildWeekSummary(appData);
         const stravaRuns = appData._latestRuns || [];
 
-// Get actual bench 1RM from logs
-  const allKeys2=Object.keys(appData).filter(k=>!k.startsWith('_')).sort().reverse();
-  let actualBench1RM=null;
-  for(const k of allKeys2){
-    const e=appData[k];
-    if(e&&e.session&&e.session.exercises&&e.session.exercises.bench){
-      const sets=e.session.exercises.bench.sets||[];
-      sets.forEach(s=>{
-        if(s.weight&&s.reps){
-          const e1rm=s.reps===1?s.weight:Math.round(s.weight*(36/(37-Math.min(s.reps,36)))*10)/10;
-          if(!actualBench1RM||e1rm>actualBench1RM) actualBench1RM=e1rm;
-        }
-      });
-      if(actualBench1RM) break;
-    }
-  }
-  const benchDisplay=actualBench1RM?`${actualBench1RM}kg (from logged sessions)`:'~88-92kg (estimated)';
-
-  const prompt=`You are Alex's weekly performance coach AI. Today is Monday ${dateStr} — weekly review and planning day.
-
+        const prompt = `You are Alex's weekly performance coach AI. Today is Monday ${dateStr} — weekly review and planning day.
 
         LAST WEEK SUMMARY:
         ${weekSummary}
@@ -6160,7 +6438,7 @@
 
         ATHLETE PROFILE:
         - Age: 24, Singapore (heat/humidity always a factor)
-        - Goals: Sub-19 5K (current 19:35), 100kg bench (current e1RM ${benchDisplay}), muscle ups (10-15 pull ups), sub-1:30 HM, sub-3:30 marathon
+        - Goals: Sub-19 5K (current 19:35), 100kg bench (current ~${currentBench || 88}kg), muscle ups (10-15 pull ups), sub-1:30 HM, sub-3:30 marathon
         - Weekly structure: Mon Push, Tue Z2 run, Wed Pull, Thu Intervals, Fri Rest, Sat Long run + Legs, Sun Yoga
         - Run zones: Z2=132-164bpm (easy 132-148), Z3=165-180, Z4=181-196
         - Current weekly volume: ~${Math.round(recentVolume)}km from last 5 runs
@@ -6394,6 +6672,316 @@
         const el = document.getElementById(id);
         if (el)
             el.classList.toggle('open');
+    }
+
+    // ── COOKIE HELPERS — persist across Safari sessions ──
+    function setCookie(name, value, days=365) {
+        const expires = new Date(Date.now() + days * 864e5).toUTCString();
+        document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict`;
+    }
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+    function deleteCookie(name) {
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    }
+
+    // Enhanced storage — writes to localStorage AND cookie
+    function lssPlus(key, value) {
+        lss(key, value);
+        // Store critical keys in cookies too
+        const cookieKeys = [SK.apiKey, SK.clientId, SK.stravaToken, SK.accessToken, SK.tokenExpiry, SK.fileId];
+        if (cookieKeys.includes(key))
+            setCookie('c_' + key, value);
+    }
+
+    // Enhanced read — checks localStorage first, falls back to cookie
+    function lsPlus(key) {
+        const local = ls(key);
+        if (local)
+            return local;
+        const cookie = getCookie('c_' + key);
+        if (cookie) {
+            lss(key, cookie); // restore to localStorage
+            return cookie;
+        }
+        return null;
+    }
+
+    // ── RESTORE FROM DRIVE CONFIG if localStorage cleared ──
+    async function tryRestoreFromDriveConfig() {
+        try {
+            // Try to get a token using any stored refresh capability
+            const storedClient = getCookie('c_' + SK.clientId);
+            if (!storedClient)
+                return;
+            lss(SK.clientId, storedClient);
+            // Restore other keys from cookies
+            [SK.apiKey, SK.stravaToken, SK.fileId].forEach(k => {
+                const v = getCookie('c_' + k);
+                if (v)
+                    lss(k, v);
+            });
+        } catch (e) {
+            console.log('Config restore failed:', e);
+        }
+    }
+
+    // ── EDITABLE GOALS SYSTEM ──
+    const DEFAULT_GOALS = [
+    {
+        key: '5k',
+        name: '5K Time',
+        type: 'time',
+        current: 19 * 60 + 35,
+        target: 19 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: '5k',
+        enabled: true
+    },
+    {
+        key: '10k',
+        name: '10K Time',
+        type: 'time',
+        current: 48 * 60 + 14,
+        target: 42 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: '10k',
+        enabled: true
+    },
+    {
+        key: 'hm',
+        name: 'Half Marathon',
+        type: 'time',
+        current: 104 * 60 + 45,
+        target: 90 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: 'half marathon',
+        enabled: true
+    },
+    {
+        key: 'marathon',
+        name: 'Marathon',
+        type: 'time',
+        current: 237 * 60 + 52,
+        target: 210 * 60,
+        unit: 'time',
+        lower: true,
+        effortKey: 'marathon',
+        enabled: true
+    },
+    {
+        key: 'bench',
+        name: 'Bench Press 1RM',
+        type: 'strength',
+        current: null,
+        target: 100,
+        unit: 'kg',
+        lower: false,
+        enabled: true
+    },
+    {
+        key: 'pullups',
+        name: 'Pull Ups / Muscle Up',
+        type: 'strength',
+        current: null,
+        target: 20,
+        unit: 'reps',
+        lower: false,
+        enabled: true
+    }
+    ];
+
+    function getGoals() {
+        const appData = getAppData();
+        if (appData._goals && appData._goals.length > 0)
+            return appData._goals;
+        return JSON.parse(JSON.stringify(DEFAULT_GOALS));
+    }
+
+    function saveGoalsToData(goals) {
+        const appData = getAppData();
+        appData._goals = goals;
+        lss(SK.data, JSON.stringify(appData));
+        saveToDrive(appData);
+    }
+
+    function timeToSecs(str) {
+        if (!str || !str.includes(':'))
+            return null;
+        const parts = str.split(':').map(Number);
+        if (parts.length === 2)
+            return parts[0] * 60 + parts[1];
+        if (parts.length === 3)
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        return null;
+    }
+
+    function buildGoalsEditor() {
+        const container = document.getElementById('goals-edit-container');
+        if (!container)
+            return;
+        const goals = getGoals();
+
+        container.innerHTML = goals.map((g, i) => `
+            <div class="goal-edit-card" id="gedit-${i}">
+              <div class="goal-edit-header">
+                <div class="goal-edit-name">${g.name}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="goal-edit-type">${g.type || 'custom'}</span>
+                  ${g.type === 'custom' ? `<button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>` : ''}
+                </div>
+              </div>
+              <div class="goal-edit-row">
+                <div class="goal-edit-field">
+                  <div class="goal-edit-label">Current</div>
+                  <input class="goal-edit-input" id="gcurr-${i}" type="text"
+                    value="${g.unit === 'time' && g.current ? formatTime(g.current) : g.current || ''}"
+                    placeholder="${g.unit === 'time' ? 'MM:SS or H:MM:SS' : g.unit === 'kg' ? 'e.g. 85' : 'e.g. 15'}">
+                </div>
+                <div class="goal-edit-field">
+                  <div class="goal-edit-label">Target</div>
+                  <input class="goal-edit-input" id="gtgt-${i}" type="text"
+                    value="${g.unit === 'time' && g.target ? formatTime(g.target) : g.target || ''}"
+                    placeholder="${g.unit === 'time' ? 'MM:SS or H:MM:SS' : g.unit === 'kg' ? 'e.g. 100' : 'e.g. 20'}">
+                </div>
+              </div>
+              <div class="goal-toggle">
+                <input type="checkbox" id="genabled-${i}" ${g.enabled !== false ? 'checked' : ''}>
+                <label class="goal-toggle-label" for="genabled-${i}">Show on dashboard</label>
+              </div>
+            </div>`).join('');
+    }
+
+    function addCustomGoal() {
+        const appData = getAppData();
+        const goals = getGoals();
+        goals.push({
+            key: 'custom_' + Date.now(),
+            name: 'Custom Goal',
+            type: 'custom',
+            current: null,
+            target: null,
+            unit: 'kg',
+            lower: false,
+            enabled: true
+        });
+        saveGoalsToData(goals);
+        buildGoalsEditor();
+    }
+
+    function deleteGoal(index) {
+        const goals = getGoals();
+        goals.splice(index, 1);
+        saveGoalsToData(goals);
+        buildGoalsEditor();
+    }
+
+    function saveGoals() {
+        const goals = getGoals();
+        goals.forEach((g, i) => {
+            const currEl = document.getElementById('gcurr-' + i);
+            const tgtEl = document.getElementById('gtgt-' + i);
+            const enabledEl = document.getElementById('genabled-' + i);
+            if (!currEl || !tgtEl)
+                return;
+            g.enabled = enabledEl ? enabledEl.checked : true;
+            if (g.unit === 'time') {
+                const c = timeToSecs(currEl.value);
+                const t = timeToSecs(tgtEl.value);
+                if (c)
+                    g.current = c;
+                if (t)
+                    g.target = t;
+            } else {
+                const c = parseFloat(currEl.value);
+                const t = parseFloat(tgtEl.value);
+                if (!isNaN(c))
+                    g.current = c;
+                if (!isNaN(t))
+                    g.target = t;
+            }
+        });
+        saveGoalsToData(goals);
+        const msg = document.getElementById('goals-saved-msg');
+        if (msg) {
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 2000);
+        }
+    }
+
+    // ── PROFILE SYSTEM ──
+    const DEFAULT_PROFILE = {
+        name: 'Alex',
+        age: 24,
+        weight: 71.3,
+        location: 'Singapore',
+        base: 'Bedok Reservoir Road',
+        job: 'Desk job Mon-Fri',
+        z2low: 132,
+        z2high: 164,
+        z3low: 165,
+        z4high: 196
+    };
+
+    function getProfile() {
+        const appData = getAppData();
+        if (appData._profile)
+            return {
+                ...DEFAULT_PROFILE,
+                ...appData._profile
+            };
+        return {
+            ...DEFAULT_PROFILE
+        };
+    }
+
+    function buildProfileScreen() {
+        const p = getProfile();
+        const fields = {
+            'prof-name': p.name,
+            'prof-age': p.age,
+            'prof-weight': p.weight,
+            'prof-location': p.location,
+            'prof-base': p.base,
+            'prof-job': p.job,
+            'prof-z2low': p.z2low,
+            'prof-z2high': p.z2high,
+            'prof-z3low': p.z3low,
+            'prof-z4high': p.z4high
+        };
+        Object.entries(fields).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el && val)
+                el.value = val;
+        });
+    }
+
+    function saveProfile() {
+        const appData = getAppData();
+        appData._profile = {
+            name: document.getElementById('prof-name')?.value || 'Alex',
+            age: parseInt(document.getElementById('prof-age')?.value) || 24,
+            weight: parseFloat(document.getElementById('prof-weight')?.value) || 71.3,
+            location: document.getElementById('prof-location')?.value || 'Singapore',
+            base: document.getElementById('prof-base')?.value || 'Bedok Reservoir Road',
+            job: document.getElementById('prof-job')?.value || 'Desk job Mon-Fri',
+            z2low: parseInt(document.getElementById('prof-z2low')?.value) || 132,
+            z2high: parseInt(document.getElementById('prof-z2high')?.value) || 164,
+            z3low: parseInt(document.getElementById('prof-z3low')?.value) || 165,
+            z4high: parseInt(document.getElementById('prof-z4high')?.value) || 196
+        };
+        lss(SK.data, JSON.stringify(appData));
+        saveToDrive(appData);
+        const msg = document.getElementById('profile-saved-msg');
+        if (msg) {
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 2000);
+        }
     }
 
     // ── INIT ──
