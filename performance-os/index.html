@@ -3770,7 +3770,7 @@
             const refreshToken = ls(SK.stravaToken);
             if (!refreshToken)
                 return null;
-            const res = await fetch('/.netlify/functions/strava', {
+            const res=await fetch('https://alh-performance-os.netlify.app/.netlify/functions/strava',{
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
