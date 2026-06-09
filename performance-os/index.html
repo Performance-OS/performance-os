@@ -2697,6 +2697,13 @@
                     </div>
                 </div>
             </div>
+            <!-- NIGHT WAKINGS -->
+            <div class="garmin-field" style="margin-bottom:1rem">
+                <div class="garmin-label">Time awake overnight</div>
+                <input class="garmin-input" type="number" id="g-wakings" placeholder="—" min="0" max="180" oninput="checkReady()">
+                <div class="garmin-unit">minutes total</div>
+            </div>
+
             <div class="section-divider" style="margin-bottom:.85rem">
                 Training Readiness 
                 <span>from Garmin</span>
@@ -3616,6 +3623,8 @@
             document.getElementById('g-deep').value = g.deep;
         if (g.weight)
             document.getElementById('g-weight').value = g.weight;
+        if (g.wakings)
+            document.getElementById('g-wakings').value = g.wakings;
         Object.assign(STATE.garmin, g);
         if (m.sleep) {
             document.getElementById('sleep-slider').value = m.sleep;
@@ -3770,7 +3779,7 @@
             const refreshToken = ls(SK.stravaToken);
             if (!refreshToken)
                 return null;
-            const res=await fetch('https://alh-performance-os.netlify.app/.netlify/functions/strava',{
+            const res = await fetch('https://alh-performance-os.netlify.app/.netlify/functions/strava', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -3907,6 +3916,8 @@
             const niggleData = getNiggleData();
             if (niggleData)
                 dataSection += `- Injury/niggle: ${niggleData.area.replace(/_/g, ' ')} — severity ${niggleData.severity}/3\n`;
+            if (g.wakings)
+                dataSection += `- Time awake overnight: ${g.wakings} minutes\n`;
             if (g.weight)
                 dataSection += `- Body weight: ${g.weight}kg\n`;
             if (g.readinessScore)
@@ -5700,6 +5711,59 @@
             </div>`;
     }
 
+    const BENCHMARKS = {
+        running: [
+        {
+            key: 'race_5k',
+            label: 'Official 5K (race/parkrun)',
+            unit: 'time',
+            placeholder: '19:35',
+            goal: 'sub 19:00',
+            note: 'Log official chip times here'
+        },
+        {
+            key: 'race_10k',
+            label: 'Official 10K',
+            unit: 'time',
+            placeholder: '48:14',
+            goal: 'sub 42:00',
+            note: 'Race result'
+        },
+        {
+            key: 'race_hm',
+            label: 'Official Half Marathon',
+            unit: 'time',
+            placeholder: '1:44:45',
+            goal: 'sub 1:30:00',
+            note: 'Race result'
+        },
+        {
+            key: 'race_marathon',
+            label: 'Official Marathon',
+            unit: 'time',
+            placeholder: '3:57:52',
+            goal: 'sub 3:30:00',
+            note: 'Race result'
+        }
+        ],
+        body: [
+        {
+            key: 'body_weight',
+            label: 'Body Weight',
+            unit: 'kg',
+            placeholder: '71.3',
+            goal: '~68-69kg'
+        },
+        {
+            key: 'body_rhr',
+            label: 'Resting HR',
+            unit: 'bpm',
+            placeholder: 'e.g. 52',
+            goal: 'track trend'
+        }
+        ]
+    };
+
     function buildBenchmarkScreen() {
         const appData = getAppData();
         const benchmarks = appData._benchmarks || {};
@@ -6833,7 +6897,7 @@
                 <div class="goal-edit-name">${g.name}</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span class="goal-edit-type">${g.type || 'custom'}</span>
-                  <button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>
+                  ${g.type === 'custom' ? `<button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>` : ''}
                 </div>
               </div>
               <div class="goal-edit-row">
@@ -6860,20 +6924,16 @@
     function addCustomGoal() {
         const appData = getAppData();
         const goals = getGoals();
-        const name=prompt('Goal name (e.g. Squat 140kg, 10K sub-45min):');
-  if(!name) return;
-  const unitChoice=prompt('Unit type — type: kg, reps, or time');
-  const unit=['kg','reps','time'].includes(unitChoice)?unitChoice:'kg';
-  goals.push({
-    key:'custom_'+Date.now(),
-    name:name,
-    type:'custom',
-    current:null,
-    target:null,
-    unit:unit,
-    lower:unit==='time',
-    enabled:true
-  });
+        goals.push({
+            key: 'custom_' + Date.now(),
+            name: 'Custom Goal',
+            type: 'custom',
+            current: null,
+            target: null,
+            unit: 'kg',
+            lower: false,
+            enabled: true
+        });
         saveGoalsToData(goals);
         buildGoalsEditor();
     }
