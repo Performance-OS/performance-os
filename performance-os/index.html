@@ -4726,6 +4726,8 @@
     }
 
     function swapExercise(originalKey, newName, newTarget, action) {
+        // Save current state before rebuilding
+        saveLogState();
         if (action === 'reset') {
             delete SESSION_SWAPS[originalKey];
         } else {
@@ -4739,7 +4741,7 @@
         const panel = document.getElementById('swap-' + originalKey);
         if (panel)
             panel.classList.remove('open');
-        // Rebuild log screen to reflect swap
+        // Rebuild log screen — restoreLogState will restore all entered sets
         buildLogScreen();
         // Re-expand the exercise that was swapped
         setTimeout(() => toggleExercise(originalKey), 50);
@@ -5493,10 +5495,28 @@
         if (exercises && exercises.length > 0) {
             workoutHtml = '<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">';
             exercises.forEach(ex => {
-                workoutHtml += `<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)">
-                        <span style="font-size:12px;color:var(--text)">${ex.name}</span>
-                        <span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">${ex.target}</span>
-                      </div>`;
+                // Check briefing for dynamic reps/load
+                const todayBriefingWO2 = getAppData()[dateKey] && getAppData()[dateKey].briefing &&
+                getAppData()[dateKey].briefing.training && getAppData()[dateKey].briefing.training.workout;
+                const bMatch = todayBriefingWO2 && todayBriefingWO2.find(w =>
+                w.exercise && (w.exercise.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
+                ex.name.toLowerCase().includes(w.exercise.split(' ')[0].toLowerCase())));
+                let targetStr = ex.target;
+                if (bMatch) {
+                    const parts = [];
+                    if (bMatch.sets)
+                        parts.push(bMatch.sets);
+                    if (bMatch.reps)
+                        parts.push(bMatch.reps);
+                    if (bMatch.load)
+                        parts.push(bMatch.load);
+                    if (parts.length)
+                        targetStr = parts.join(' · ');
+                }
+                workoutHtml += '<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)">'
+                + '<span style="font-size:12px;color:var(--text)">' + ex.name + '</span>'
+                + '<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">' + targetStr + '</span>'
+                + '</div>';
             });
             workoutHtml += '</div>';
         } else if (session && session.type === 'run' || session && session.type === 'both' || session && session.type === 'recovery') {
@@ -6991,8 +7011,9 @@
 
     function getGoals() {
         const appData = getAppData();
+        // Always deep copy to prevent mutation corrupting stored goals
         if (appData._goals && appData._goals.length > 0)
-            return appData._goals;
+            return JSON.parse(JSON.stringify(appData._goals));
         return JSON.parse(JSON.stringify(DEFAULT_GOALS));
     }
 
