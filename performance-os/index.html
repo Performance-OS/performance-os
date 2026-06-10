@@ -3980,13 +3980,12 @@
       const content=document.getElementById('log-content');
       const saveBtn=document.getElementById('save-session-btn');
 
-      // If session already saved today - show complete screen, don't rebuild
-if(!window.__forceLogRebuild){
+      if(!window.__forceLogRebuild){
     const todayData=getAppData()[todayKey];
     if(todayData && todayData.session){
         const sessionType = dayName === "Monday" ? 'Push' : dayName === "Wednesday" ? 'Pull' : 'Legs';
         
-        // CHANGED: Opened with a backtick ` instead of a single quote '
+        // FIX: Opened and closed both with backticks (`) to properly allow multi-line HTML string interpolation
         content.innerHTML = `
             <div style="text-align:center;padding:2rem 1rem">
                 <div style="font-size:48px;margin-bottom:.75rem">💪</div>
@@ -3994,7 +3993,7 @@ if(!window.__forceLogRebuild){
                 <div style="font-size:13px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:.5rem">${sessionType} - ${dateStr}</div>
                 <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-top:1rem">Tomorrow's briefing will use these numbers.</div>
                 <button onclick="buildLogScreenForce()" style="margin-top:1.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2);background:transparent;border:1px solid var(--muted2);padding:0.5rem 1rem;border-radius:4px;cursor:pointer;">Edit Log</button>
-            </div>`; // CHANGED: Closed with a backtick ` instead of a single quote '
+            </div>`; 
             
         saveBtn.style.display='none';
         const noteWrap=document.getElementById('session-note-wrap');
