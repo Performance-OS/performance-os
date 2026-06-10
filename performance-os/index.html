@@ -2520,6 +2520,118 @@
         cursor: pointer
     }
 
+    .recovery-reason-btn {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        padding: 8px 6px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted2);
+        cursor: pointer;
+        transition: all .15s;
+        text-align: center
+    }
+
+    .recovery-reason-btn:hover {
+        border-color: var(--muted2);
+        color: var(--text)
+    }
+
+    .recovery-reason-btn.active {
+        border-color: rgba(245, 166, 35, .4);
+        background: rgba(245, 166, 35, .08);
+        color: var(--warn)
+    }
+
+    .cal-week {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        margin-bottom: .75rem;
+        overflow: hidden
+    }
+
+    .cal-week-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .85rem 1.25rem;
+        cursor: pointer
+    }
+
+    .cal-week-num {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+        font-family: var(--font-mono)
+    }
+
+    .cal-week-theme {
+        font-size: 12px;
+        color: var(--text);
+        font-weight: 600
+    }
+
+    .cal-week-km {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--muted)
+    }
+
+    .cal-week-body {
+        display: none;
+        border-top: 1px solid var(--border);
+        padding: .75rem 1.25rem
+    }
+
+    .cal-week-body.open {
+        display: block
+    }
+
+    .cal-day-row {
+        display: flex;
+        gap: 10px;
+        padding: .4rem 0;
+        border-bottom: 1px solid var(--border);
+        align-items: start
+    }
+
+    .cal-day-row:last-child {
+        border-bottom: none
+    }
+
+    .cal-day-label {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--accent);
+        min-width: 28px
+    }
+
+    .cal-day-detail {
+        font-size: 12px;
+        color: var(--muted2);
+        line-height: 1.5;
+        flex: 1
+    }
+
+    .cal-week-current {
+        border-color: rgba(200, 245, 96, .3)
+    }
+
+    .cal-week-header-current {
+        background: rgba(200, 245, 96, .04)
+    }
+
+    .cal-phase-badge {
+        font-size: 9px;
+        font-family: var(--font-mono);
+        padding: 2px 8px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        color: var(--muted)
+    }
+
     .settings-link {
         position: fixed;
         bottom: 1.5rem;
@@ -2727,6 +2839,22 @@
                     <div class="garmin-label">Time awake overnight</div>
                     <input class="garmin-input" type="number" id="g-wakings" placeholder="—" min="0" max="180" oninput="checkReady()">
                     <div class="garmin-unit">minutes total</div>
+                </div>
+            </div>
+
+            <!-- RECOVERY REASON -->
+            <div style="margin-bottom:1.5rem">
+                <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">
+                    Any reason for poor recovery? 
+                    <span style="color:var(--muted)">(optional)</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="recovery-reason-grid">
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('alcohol')">🍺 Alcohol</button>
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('illness')">🤒 Illness</button>
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('stress')">😰 Stress</button>
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('travel')">✈️ Travel</button>
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('sleep')">😴 Poor sleep</button>
+                    <button class="recovery-reason-btn" onclick="selectRecoveryReason('other')">❓ Other</button>
                 </div>
             </div>
 
@@ -3569,6 +3697,8 @@
         checkReady();
         if (today && today.niggle)
             restoreNiggle(today.niggle);
+        if (today && today.recoveryReason)
+            restoreRecoveryReason(today.recoveryReason);
         // If today's briefing already exists — show it instantly, no API call
         if (today.briefing) {
             const nutType = getNutritionType();
@@ -3783,7 +3913,8 @@
             garmin: g,
             manual: m,
             fallback: fallbackOpen,
-            niggle
+            niggle,
+            recoveryReason: RECOVERY_REASON
         };
         // Auto-save weight as benchmark if entered
         if (g.weight) {
@@ -3849,6 +3980,8 @@
                 dataSection += `- Injury/niggle: ${niggleData.area.replace(/_/g, ' ')} — severity ${niggleData.severity}/3\n`;
             if (g.wakings)
                 dataSection += `- Time awake overnight: ${g.wakings} minutes\n`;
+            if (RECOVERY_REASON)
+                dataSection += `- Reason for poor recovery: ${RECOVERY_REASON} (athlete flagged this — factor into session recommendations and do not assume fitness decline)\n`;
             if (g.weight)
                 dataSection += `- Body weight: ${g.weight}kg\n`;
             if (g.readinessScore)
@@ -4148,6 +4281,7 @@
             buildDashboard(); // getAppData() called fresh inside
             showScreen('dashboard');
         } else if (tab === 'calendar') {
+            buildCalendarScreen();
             showScreen('calendar');
         } else if (tab === 'benchmark') {
             buildBenchmarkScreen();
@@ -6493,6 +6627,27 @@
         buildRaceCountdown(appData);
     }
 
+    // ── RECOVERY REASON ──
+    let RECOVERY_REASON = null;
+
+    function selectRecoveryReason(reason) {
+        if (RECOVERY_REASON === reason) {
+            RECOVERY_REASON = null;
+            document.querySelectorAll('.recovery-reason-btn').forEach(b => b.classList.remove('active'));
+            return;
+        }
+        RECOVERY_REASON = reason;
+        document.querySelectorAll('.recovery-reason-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`.recovery-reason-btn[onclick="selectRecoveryReason('${reason}')"]`);
+        if (btn)
+            btn.classList.add('active');
+    }
+
+    function restoreRecoveryReason(reason) {
+        if (reason)
+            selectRecoveryReason(reason);
+    }
+
     // ── NIGGLE TRACKER ──
     const NIGGLE_STATE = {
         area: null,
@@ -7236,6 +7391,182 @@
         }
     }
 
+    // ── TRAINING CALENDAR ──
+    function buildCalendarScreen() {
+        const container = document.getElementById('calendar-container');
+        if (!container)
+            return;
+
+        const appData = getAppData();
+        const goals = getGoals();
+        const plan = appData._trainingPlan;
+        const races = appData._races || [];
+        const profile = getProfile();
+
+        // Get next race if exists
+        const nextRace = races.find(r => r.date >= todayKey);
+
+        // Determine current week number from plan start
+        const planStart = plan ? plan.generatedDate : todayKey;
+        const weeksSincePlan = Math.floor((new Date(todayKey) - new Date(planStart)) / (7 * 24 * 60 * 60 * 1000));
+
+        // Build 8 weeks of calendar
+        const weeks = [];
+        for (let w = 0; w < 8; w++) {
+            const weekStart = new Date(getThisMonday());
+            weekStart.setDate(weekStart.getDate() + (w * 7));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            const weekStartStr = weekStart.toISOString().split('T')[0];
+            const weekEndStr = weekEnd.toISOString().split('T')[0];
+            const isCurrentWeek = w === 0;
+            const weekNum = weeksSincePlan + w + 1;
+
+            // Get phase based on race proximity
+            let phase = 'Base Building';
+            let weekKmTarget = '25-30km';
+            if (nextRace) {
+                const daysToRace = Math.round((new Date(nextRace.date) - new Date(weekStartStr)) / (24 * 60 * 60 * 1000));
+                if (daysToRace <= 14)
+                    phase = 'Taper';
+                else if (daysToRace <= 28)
+                    phase = 'Peak';
+                else if (daysToRace <= 56)
+                    phase = 'Build';
+                else
+                    phase = 'Base Building';
+            } else {
+                // No race — progress based on week number
+                if (weekNum <= 2) {
+                    phase = 'Base Building';
+                    weekKmTarget = '25-30km';
+                }
+                else if (weekNum <= 4) {
+                    phase = 'Base Building';
+                    weekKmTarget = '30-35km';
+                }
+                else if (weekNum <= 8) {
+                    phase = 'Build';
+                    weekKmTarget = '35-45km';
+                }
+                else if (weekNum <= 16) {
+                    phase = 'Build';
+                    weekKmTarget = '45-55km';
+                }
+                else {
+                    phase = 'Peak';
+                    weekKmTarget = '55-65km';
+                }
+            }
+
+            // Get days from saved plan if available
+            let days = null;
+            if (plan && plan.plan && plan.plan.weeks) {
+                const planWeek = plan.plan.weeks[w];
+                if (planWeek)
+                    days = planWeek.days;
+            }
+
+            // Default day structure if no plan
+            const defaultDays = {
+                Mon: 'Push session — bench focus',
+                Tue: `Zone 2 run — 132-148bpm easy`,
+                Wed: 'Pull session — muscle up progression',
+                Thu: 'Interval run — Zone 3/4 effort',
+                Fri: 'Rest / active recovery',
+                Sat: 'Long run + legs session',
+                Sun: 'Yoga + mobility 30-45 min'
+            };
+
+            weeks.push({
+                w,
+                weekNum,
+                weekStart,
+                weekEnd,
+                weekStartStr,
+                isCurrentWeek,
+                phase,
+                weekKmTarget,
+                days: days || defaultDays
+            });
+        }
+
+        // Format date range
+        function fmtDateRange(start, end) {
+            const s = new Date(start);
+            const e = new Date(end);
+            return s.toLocaleDateString('en-SG', {
+                day: 'numeric',
+                month: 'short'
+            }) + ' – ' + e.toLocaleDateString('en-SG', {
+                day: 'numeric',
+                month: 'short'
+            });
+        }
+
+        // Render
+        let html = '';
+
+        // Next race banner if exists
+        if (nextRace) {
+            const daysToRace = Math.round((new Date(nextRace.date) - new Date(todayKey)) / (24 * 60 * 60 * 1000));
+            html += `<div style="background:rgba(200,245,96,.06);border:1px solid rgba(200,245,96,.15);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                  <div>
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Next race</div>
+                    <div style="font-size:15px;font-weight:700;color:var(--text)">${nextRace.name}</div>
+                    <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted)">${nextRace.distance} · ${new Date(nextRace.date).toLocaleDateString('en-SG', {day: 'numeric',month: 'short',year: 'numeric'})}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div style="font-size:32px;font-weight:800;font-family:var(--font-mono);color:var(--accent);line-height:1">${daysToRace}</div>
+                    <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">days away</div>
+                  </div>
+                </div>`;
+        }
+
+        html += weeks.map((wk, i) => {
+            const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const dayRows = dayOrder.map(d => {
+                const detail = wk.days[d] || '';
+                if (!detail)
+                    return '';
+                return `<div class="cal-day-row">
+                        <div class="cal-day-label">${d}</div>
+                        <div class="cal-day-detail">${detail}</div>
+                      </div>`;
+            }).join('');
+
+            return `<div class="cal-week${wk.isCurrentWeek ? ' cal-week-current' : ''}">
+                  <div class="cal-week-header${wk.isCurrentWeek ? ' cal-week-header-current' : ''}" onclick="toggleCalWeek('calw-${i}')">
+                    <div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                        <div class="cal-week-num">Week ${wk.weekNum}</div>
+                        ${wk.isCurrentWeek ? '<span style="font-size:9px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,245,96,.1);border:1px solid rgba(200,245,96,.2);padding:1px 6px;border-radius:20px">current</span>' : ''}
+                      </div>
+                      <div class="cal-week-theme">${wk.phase}</div>
+                      <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:1px">${fmtDateRange(wk.weekStartStr, wk.weekEnd.toISOString().split('T')[0])}</div>
+                    </div>
+                    <div style="text-align:right">
+                      <div class="cal-week-km">${wk.weekKmTarget}</div>
+                      <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">target volume</div>
+                    </div>
+                  </div>
+                  <div class="cal-week-body" id="calw-${i}">${dayRows}</div>
+                </div>`;
+        }).join('');
+
+        container.innerHTML = html;
+
+        // Auto-expand current week
+        const currentWeekEl = document.getElementById('calw-0');
+        if (currentWeekEl)
+            currentWeekEl.classList.add('open');
+    }
+
+    function toggleCalWeek(id) {
+        const el = document.getElementById(id);
+        if (el)
+            el.classList.toggle('open');
+    }
     // ── INIT ──
     async function init() {
         let apiKey = ls(SK.apiKey);
