@@ -2652,14 +2652,14 @@
                     <div class="garmin-unit">out of 100</div>
                 </div>
                 <div class="garmin-field">
-                    <div class="garmin-label">Body Battery</div>
-                    <input class="garmin-input" type="number" id="g-body-battery" placeholder="—" min="0" max="100" oninput="checkReady()">
-                    <div class="garmin-unit">out of 100</div>
-                </div>
-                <div class="garmin-field">
                     <div class="garmin-label">HRV Status</div>
                     <input class="garmin-input" type="number" id="g-hrv" placeholder="—" min="0" max="120" oninput="checkReady()">
                     <div class="garmin-unit">7-day avg (ms)</div>
+                </div>
+                <div class="garmin-field">
+                    <div class="garmin-label">Body Battery</div>
+                    <input class="garmin-input" type="number" id="g-body-battery" placeholder="—" min="0" max="100" oninput="checkReady()">
+                    <div class="garmin-unit">out of 100</div>
                 </div>
                 <div class="garmin-field">
                     <div class="garmin-label">REM Sleep</div>
@@ -3630,11 +3630,16 @@
       const appData0=getAppData();
       const lastSession=getPreviousSession(dayName,appData0);
       // Include yesterday's session note if available
-      const yesterdayKey=new Date(Date.now()-86400000).toISOString().split('T')[0];
-      const yesterdayEntry=appData0[yesterdayKey];
-      if(yesterdayEntry&&yesterdayEntry.session&&yesterdayEntry.session.note){
-        dataSection+=`\nYESTERDAY'S SESSION NOTE: "${yesterdayEntry.session.note}"\n`;
-      }
+      // Include recent session notes with correct date context
+      const recentKeys0=Object.keys(appData0).filter(k=>!k.startsWith('_')).sort().reverse().slice(0,4);
+      recentKeys0.forEach(k=>{
+        const entry=appData0[k];
+        if(entry&&entry.session&&entry.session.note&&k!==todayKey){
+          const daysAgo=Math.round((new Date(todayKey)-new Date(k))/(1000*60*60*24));
+          const label=daysAgo===1?'yesterday':daysAgo+' days ago';
+          dataSection+=`\nSESSION NOTE (${label} — ${entry.session.day}): "${entry.session.note}"\n`;
+        }
+      });
       if(lastSession&&['Monday','Wednesday','Saturday'].includes(dayName)){
         dataSection+='\nLAST '+dayName.toUpperCase()+' SESSION:\n';
         Object.values(lastSession).forEach(ex=>{
@@ -3771,10 +3776,23 @@
           <div class="b-card-header"><span class="b-tag tag-focus">Today's focus</span></div>
           <div class="b-body"><strong>${b.focus}</strong></div>
         </div>
-        <div class="done-banner">${cached?'Loaded from cache — <strong>no API call used.</strong>':'Saved to Google Drive. <strong>Opens instantly tomorrow.</strong>'}</div>
-      `;
+        <div class="done-banner">${cached?'Loaded from cache — <strong>no API call used.</strong>':'Briefing generated and saved. <strong>Come back tomorrow for a fresh one.</strong>'}</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-top:.75rem;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Daily mobility</div>
+            <div style="font-size:13px;color:var(--text)">10-15 min stretching / yoga</div>
+          </div>
+          <input type="checkbox" id="mobility-daily-check" style="width:22px;height:22px;cursor:pointer;accent-color:var(--accent)" onchange="saveDailyMobility(this.checked)">
+        </div>
+      \`;
       container.style.display='block';
       showTabBar();
+      // Restore daily mobility tick
+      const mobilityCheck=document.getElementById('mobility-daily-check');
+      if(mobilityCheck){
+        const appData2=getAppData();
+        mobilityCheck.checked=appData2[todayKey]&&appData2[todayKey].dailyMobility===true;
+      }
       // If Monday — show weekly review section and generate if needed
       if(isMonday){
         const mondaySec=document.getElementById('monday-section');
@@ -4014,7 +4032,7 @@
         const mobilityKey='mobility_'+todayKey;
         const savedMobility=localStorage.getItem(mobilityKey);
         const mobilityOptions=isSunday?
-          ['Sun salutations','Hip flexor stretch','Hamstring stretch','Pigeon pose','Thoracic rotation','Glute stretch','Calf stretch','Child\'s pose']:
+          ['Sun salutations','Hip flexor stretch','Hamstring stretch','Pigeon pose','Thoracic rotation','Glute stretch','Calf stretch','Child's pose']:
           ['Hip flexor stretch','Quad stretch','Hamstring stretch','Calf stretch','Shoulder rolls','Spinal twist'];
         content.innerHTML=`<div style="padding:1rem 0">
           <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:.25rem">${isSunday?'Yoga + Mobility':'Morning Mobility'}</div>
@@ -4244,6 +4262,14 @@
         }
         return true;
       }catch(e){return false;}
+    }
+
+    function saveDailyMobility(checked){
+      const appData=getAppData();
+      if(!appData[todayKey]) appData[todayKey]={date:todayKey};
+      appData[todayKey].dailyMobility=checked;
+      lss(SK.data,JSON.stringify(appData));
+      saveToDrive(appData);
     }
 
     function saveMobility(){
@@ -4654,10 +4680,16 @@
           const pct=Math.min(100,Math.round((g.current/g.target)*100));
           const fillClass=pct>=100?'achieved':pct>=80?'close':'';
           const display=g.unit==='kg'?g.current+'kg':g.current+' reps';
+          // Check today's briefing for recommended load/reps
+          const todayBrf=appData[todayKey]&&appData[todayKey].briefing;
+          const bWorkout=todayBrf&&todayBrf.training&&todayBrf.training.workout;
+          const searchTerm=g.key==='bench'?'bench':g.key==='pullups'?'pull':g.key;
+          const bEx=bWorkout&&bWorkout.find(w=>w.exercise&&w.exercise.toLowerCase().includes(searchTerm));
           html+=`<div class="goal-card">
             <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct">${pct}%</div></div>
             <div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">Target: ${g.target}${g.unit==='kg'?'kg':' reps'}</div></div>
             <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
+            ${bEx?`<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);margin-top:.4rem">Today: ${bEx.load||''} × ${bEx.reps||''}</div>`:''}
           </div>`;
         }
       });
@@ -5401,7 +5433,6 @@
       const allRuns2=appData._latestRuns||[];
       const weekSessions=weekKeys.filter(k=>{
         if(appData[k]&&appData[k].session) return true;
-        if(appData[k]&&appData[k].mobility) return true;
         if(allRuns2.some(r=>r.date===k)) return true;
         return false;
       }).length;
@@ -5655,6 +5686,8 @@
 
     Generate a structured 4-week progressive block. Each week should build on the last with clear progression. Week 4 can be a slight deload before the next block.
 
+    IMPORTANT: Tailor the plan specifically to the athlete's request. If they only mention running goals, only include run sessions — no gym work unless they specifically ask. If they mention strength goals, include lift sessions. Match the plan to what they actually asked for.
+
     Respond ONLY as JSON, no markdown, no backticks:
     {
       "blockTitle": "short name for this training block",
@@ -5766,8 +5799,25 @@
           sessions.push({date:k,type:'lift',session:entry.session});
         }
       });
-      // Add Strava runs as sessions
+      // Add ALL stored runs across all days in Drive
+      const allStoredRuns=[];
+      Object.keys(appData).filter(k=>!k.startsWith('_')).forEach(k=>{
+        if(appData[k]&&appData[k].stravaRuns){
+          appData[k].stravaRuns.forEach(r=>{
+            if(!allStoredRuns.find(existing=>existing.date===r.date&&existing.distance_km===r.distance_km)){
+              allStoredRuns.push(r);
+            }
+          });
+        }
+      });
+      // Also include current cache
       allRuns.forEach(r=>{
+        if(!allStoredRuns.find(existing=>existing.date===r.date&&existing.distance_km===r.distance_km)){
+          allStoredRuns.push(r);
+        }
+      });
+      // Add all runs as sessions
+      allStoredRuns.forEach(r=>{
         sessions.push({date:r.date,type:'run',run:r});
       });
       // Sort by date descending
