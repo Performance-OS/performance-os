@@ -5275,7 +5275,7 @@
         };
         GOALS.filter(g => g && g.effortKey).forEach(g => {
             const val = stravaPBs[g.effortKey] || stravaPBs[g.key];
-            if (val && val > 0 && g)
+            if (val && val > 0 && g && typeof g === 'object')
                 g.current = val;
         });
 
@@ -5310,8 +5310,11 @@
                 });
             }
         }
-        if (best1RM > 0)
-            GOALS.find(g => g.key === 'bench').current = Math.round(best1RM);
+        if (best1RM > 0) {
+            const benchGoal = GOALS.find(g => g.key === 'bench');
+            if (benchGoal)
+                benchGoal.current = Math.round(best1RM);
+        }
 
         // Pull up max
         for (const k of keys) {
@@ -5320,8 +5323,11 @@
                 const sets = entry.session.exercises.ctb_pullups.sets || [];
                 const maxR = Math.max(...sets.filter(s => s.reps).map(s => s.reps), 0);
                 if (maxR > 0) {
-                    GOALS.find(g => g.key === 'pullups').current = maxR;
-                    break;
+                    const pullGoal = GOALS.find(g => g.key === 'pullups');
+                    if (pullGoal) {
+                        pullGoal.current = maxR;
+                        break;
+                    }
                 }
             }
         }
