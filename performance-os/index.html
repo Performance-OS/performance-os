@@ -4525,21 +4525,21 @@
         const saveBtn = document.getElementById('save-session-btn');
 
         // If session already saved today — show complete screen, don't rebuild
-        if (window._forceLogRebuild) {
+        const isForceRebuild = window._forceLogRebuild;
+        if (isForceRebuild)
             window._forceLogRebuild = false;
-        }
-        else {
+        if (!isForceRebuild) {
             const todayData = getAppData()[todayKey];
             if (todayData && todayData.session) {
                 const sessionType = dayName === 'Monday' ? 'Push' : dayName === 'Wednesday' ? 'Pull' : 'Legs';
                 content.innerHTML = `
-                      <div style="text-align:center;padding:2rem 1rem">
-                        <div style="font-size:48px;margin-bottom:.75rem">💪</div>
-                        <div style="font-size:22px;font-weight:800;color:var(--accent);margin-bottom:.4rem">Session complete</div>
-                        <div style="font-size:13px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:.5rem">${sessionType} — ${dateStr}</div>
-                        <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-top:1rem">Tomorrow's briefing will use these numbers.</div>
-                        <button onclick="buildLogScreenForce()" style="margin-top:1.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2);background:transparent;border:1px solid var(--border);padding:8px 16px;border-radius:8px;cursor:pointer">+ Log another session</button>
-                      </div>`;
+                        <div style="text-align:center;padding:2rem 1rem">
+                          <div style="font-size:48px;margin-bottom:.75rem">💪</div>
+                          <div style="font-size:22px;font-weight:800;color:var(--accent);margin-bottom:.4rem">Session complete</div>
+                          <div style="font-size:13px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:.5rem">${sessionType} — ${dateStr}</div>
+                          <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-top:1rem">Tomorrow's briefing will use these numbers.</div>
+                          <button onclick="buildLogScreenForce()" style="margin-top:1.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2);background:transparent;border:1px solid var(--border);padding:8px 16px;border-radius:8px;cursor:pointer">+ Log another session</button>
+                        </div>`;
                 saveBtn.style.display = 'none';
                 const noteWrap = document.getElementById('session-note-wrap');
                 if (noteWrap)
@@ -4666,6 +4666,7 @@
             noteWrap.style.display = 'block';
 
         // 1. Try to restore cached lift state (tab switch recovery)
+        // Always try to restore saved state first (covers swap case)
         const restored = restoreLiftCache();
         if (!restored) {
             // 2. Try to pre-populate from today's briefing workout JSON
@@ -4777,6 +4778,7 @@
             if (noteEl)
                 state.note = noteEl.value;
             localStorage.setItem('pos_lift_state', JSON.stringify(state));
+            lss(SK.liftCache, JSON.stringify(state));
         } catch (e) {}
     }
 
@@ -5081,6 +5083,7 @@
             banner.innerHTML = `<strong>Session saved.</strong> Tomorrow's briefing will use these numbers for progressive overload.`;
         }
         localStorage.removeItem('pos_lift_state');
+        lss(SK.liftCache, '');
         document.getElementById('save-session-btn').style.display = 'none';
         const noteWrap2 = document.getElementById('session-note-wrap');
         if (noteWrap2)
@@ -5508,23 +5511,45 @@
         if (exercises && exercises.length > 0) {
             workoutHtml = '<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">';
             exercises.forEach(ex => {
-                // Check briefing for dynamic reps/load
-                const todayBriefingWO2 = getAppData()[dateKey] && getAppData()[dateKey].briefing &&
-                getAppData()[dateKey].briefing.training && getAppData()[dateKey].briefing.training.workout;
-                const bMatch = todayBriefingWO2 && todayBriefingWO2.find(w =>
-                w.exercise && (w.exercise.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
-                ex.name.toLowerCase().includes(w.exercise.split(' ')[0].toLowerCase())));
+                // Get reps/load from Monday weekPlan first, then daily briefing
                 let targetStr = ex.target;
-                if (bMatch) {
-                    const parts = [];
-                    if (bMatch.sets)
-                        parts.push(bMatch.sets);
-                    if (bMatch.reps)
-                        parts.push(bMatch.reps);
-                    if (bMatch.load)
-                        parts.push(bMatch.load);
-                    if (parts.length)
-                        targetStr = parts.join(' · ');
+                const mondayBriefingData = getAppData()[getThisMonday()];
+                const weekPlanDay = mondayBriefingData && mondayBriefingData.mondayBriefing &&
+                mondayBriefingData.mondayBriefing.weekPlan &&
+                mondayBriefingData.mondayBriefing.weekPlan[day];
+                if (weekPlanDay && weekPlanDay.exercises) {
+                    const wpMatch = weekPlanDay.exercises.find(w =>
+                    w.name && (w.name.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
+                    ex.name.toLowerCase().includes(w.name.split(' ')[0].toLowerCase())));
+                    if (wpMatch) {
+                        const parts = [];
+                        if (wpMatch.sets)
+                            parts.push(wpMatch.sets);
+                        if (wpMatch.reps)
+                            parts.push(wpMatch.reps);
+                        if (wpMatch.load)
+                            parts.push(wpMatch.load);
+                        if (parts.length)
+                            targetStr = parts.join(' · ');
+                    }
+                } else {
+                    // Fall back to daily briefing workout
+                    const dayBriefing = getAppData()[dateKey] && getAppData()[dateKey].briefing &&
+                    getAppData()[dateKey].briefing.training && getAppData()[dateKey].briefing.training.workout;
+                    const bMatch = dayBriefing && dayBriefing.find(w =>
+                    w.exercise && (w.exercise.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
+                    ex.name.toLowerCase().includes(w.exercise.split(' ')[0].toLowerCase())));
+                    if (bMatch) {
+                        const parts = [];
+                        if (bMatch.sets)
+                            parts.push(bMatch.sets);
+                        if (bMatch.reps)
+                            parts.push(bMatch.reps);
+                        if (bMatch.load)
+                            parts.push(bMatch.load);
+                        if (parts.length)
+                            targetStr = parts.join(' · ');
+                    }
                 }
                 workoutHtml += '<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)">'
                 + '<span style="font-size:12px;color:var(--text)">' + ex.name + '</span>'
