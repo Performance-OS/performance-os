@@ -4741,7 +4741,8 @@
         const panel = document.getElementById('swap-' + originalKey);
         if (panel)
             panel.classList.remove('open');
-        // Rebuild log screen — restoreLogState will restore all entered sets
+        // Rebuild log screen — force rebuild even if session saved today
+        window._forceLogRebuild = true;
         buildLogScreen();
         // Re-expand the exercise that was swapped
         setTimeout(() => toggleExercise(originalKey), 50);
@@ -6306,8 +6307,8 @@
             return false;
         }).length;
 
-        // Sessions target = 5 scheduled sessions Mon-Sat (Mon push, Tue run, Wed pull, Thu run, Sat double)
-        const sessionTarget = 5;
+        // Sessions target = 6 scheduled sessions Mon-Sat (Mon push, Tue run, Wed pull, Thu run, Sat run + Sat legs = 2)
+        const sessionTarget = 6;
         const sessionPct = Math.min(100, Math.round((weekSessions / sessionTarget) * 100));
         const sessionColor = weekSessions >= sessionTarget ? 'var(--success)' : weekSessions >= 3 ? 'var(--warn)' : 'var(--accent2)';
 
@@ -7059,7 +7060,7 @@
                 <div class="goal-edit-name">${g.name}</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span class="goal-edit-type">${g.type || 'custom'}</span>
-                  ${g.type === 'custom' ? `<button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>` : ''}
+                  <button class="goal-delete-btn" onclick="deleteGoal(${i})">remove</button>
                 </div>
               </div>
               <div class="goal-edit-row">
