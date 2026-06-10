@@ -4874,6 +4874,8 @@
     function toggleExercise(key) {
         const body = document.getElementById('body-' + key);
         const chev = document.getElementById('chev-' + key);
+        if (!body || !chev)
+            return;
         const open = body.classList.toggle('open');
         chev.classList.toggle('open', open);
         chev.textContent = open ? '↑' : '↓';
@@ -5245,7 +5247,11 @@
 
     function buildGoals(appData) {
         // Use editable goals if saved, otherwise defaults
-        const GOALS = getGoals();
+        // Validate and clean goals array to prevent crashes from corrupted data
+        let GOALS = getGoals();
+        GOALS = GOALS.filter(g => g && typeof g === 'object' && g.key && g.name);
+        if (GOALS.length === 0)
+            GOALS = JSON.parse(JSON.stringify(DEFAULT_GOALS));
         const container = document.getElementById('goals-container');
         const keys = Object.keys(appData).sort().reverse();
 
@@ -5267,9 +5273,9 @@
             'hm': 'half marathon',
             'marathon': 'marathon'
         };
-        GOALS.filter(g => g.effortKey).forEach(g => {
+        GOALS.filter(g => g && g.effortKey).forEach(g => {
             const val = stravaPBs[g.effortKey] || stravaPBs[g.key];
-            if (val && val > 0)
+            if (val && val > 0 && g)
                 g.current = val;
         });
 
@@ -5281,7 +5287,7 @@
             'hm': 21097,
             'marathon': 42195
         };
-        const runGoals = GOALS.filter(g => g.unit === 'time' && g.current);
+        const runGoals = GOALS.filter(g => g && g.unit === 'time' && g.current);
         if (runGoals.length > 0) {
             const anchor = runGoals.find(g => g.key === '10k') || runGoals.find(g => g.key === '5k') || runGoals[0];
             const anchorDist = distMap[anchor.key];
@@ -5393,7 +5399,7 @@
             } else {
                 const pct = Math.min(100, Math.round((g.current / g.target) * 100));
                 const fillClass = pct >= 100 ? 'achieved' : pct >= 80 ? 'close' : '';
-                const display = g.unit === 'kg' ? g.current + 'kg' : g.current + ' reps';
+                const display = g.unit === 'kg' ? (g.current || 0) + 'kg' : (g.current || 0) + ' reps';
                 // Check today's briefing for recommended load/reps
                 const todayBrf = appData[todayKey] && appData[todayKey].briefing;
                 const bWorkout = todayBrf && todayBrf.training && todayBrf.training.workout;
