@@ -2645,6 +2645,34 @@
                 Garmin data 
                 <span>from your watch</span>
             </div>
+
+            <!-- 1. TRAINING READINESS -->
+            <div class="section-divider" style="margin-bottom:.85rem;margin-top:0;border-top:none">
+                Training Readiness 
+                <span>from Garmin</span>
+            </div>
+            <div class="garmin-grid" style="margin-bottom:1rem">
+                <div class="garmin-field">
+                    <div class="garmin-label">Readiness Score</div>
+                    <input class="garmin-input" type="number" id="g-readiness-score" placeholder="—" min="0" max="100" oninput="syncReadiness('score')">
+                    <div class="garmin-unit">out of 100</div>
+                </div>
+                <div class="garmin-field" style="display:flex;flex-direction:column;justify-content:center">
+                    <div class="garmin-label">Category</div>
+                    <div class="select-wrap" style="margin-bottom:0">
+                        <select class="readiness-select" id="g-readiness" onchange="syncReadiness('dropdown')" style="font-size:11px;padding:8px 10px">
+                            <option value="">— select —</option>
+                            <option value="prime">Prime (85-100)</option>
+                            <option value="high">High (70-84)</option>
+                            <option value="moderate">Moderate (50-69)</option>
+                            <option value="low">Low (25-49)</option>
+                            <option value="poor">Poor (0-24)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SLEEP + HRV + BODY BATTERY -->
             <div class="garmin-grid">
                 <div class="garmin-field">
                     <div class="garmin-label">Sleep Score</div>
@@ -2671,88 +2699,34 @@
                     <input class="garmin-input" type="number" id="g-deep" placeholder="—" min="0" max="180" oninput="checkReady()">
                     <div class="garmin-unit">minutes</div>
                 </div>
-                <!-- SLEEP DURATION — hrs & mins -->
                 <div class="garmin-field">
                     <div class="garmin-label">Body Weight</div>
                     <input class="garmin-input" type="number" id="g-weight" placeholder="—" min="40" max="150" step="0.1" oninput="checkReady()">
                     <div class="garmin-unit">kg (optional)</div>
                 </div>
-
-                <div class="sleep-field" style="grid-column:span 2">
-                    <div class="garmin-label">Sleep times</div>
-                    <div class="sleep-hm-row" style="gap:12px;align-items:center">
-                        <div class="sleep-hm-wrap" style="flex:1">
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Bedtime</div>
-                            <input type="time" id="g-bedtime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
-                        </div>
-                        <div style="font-size:18px;color:var(--muted);font-family:var(--font-mono);padding-top:16px">→</div>
-                        <div class="sleep-hm-wrap" style="flex:1">
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Wake time</div>
-                            <input type="time" id="g-waketime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
-                        </div>
-                        <div class="sleep-hm-wrap" style="flex:0 0 auto;text-align:right">
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2px">Duration</div>
-                            <div id="sleep-duration-display" style="font-size:18px;font-weight:500;font-family:var(--font-mono);color:var(--muted2)">—</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- NIGHT WAKINGS -->
-            <div class="garmin-field" style="margin-bottom:1rem">
-                <div class="garmin-label">Time awake overnight</div>
-                <input class="garmin-input" type="number" id="g-wakings" placeholder="—" min="0" max="180" oninput="checkReady()">
-                <div class="garmin-unit">minutes total</div>
             </div>
 
-            <div class="section-divider" style="margin-bottom:.85rem">
-                Training Readiness 
-                <span>from Garmin</span>
-            </div>
+            <!-- 3. SLEEP DURATION + NIGHT WAKINGS -->
             <div class="garmin-grid" style="margin-bottom:1.5rem">
+                <div class="sleep-field" style="grid-column:span 1">
+                    <div class="garmin-label">Bedtime → Wake</div>
+                    <div class="sleep-hm-row" style="gap:8px;align-items:center">
+                        <div class="sleep-hm-wrap" style="flex:1">
+                            <input type="time" id="g-bedtime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                            <div class="sleep-hm-unit">bedtime</div>
+                        </div>
+                        <div class="sleep-hm-sep" style="font-size:12px">→</div>
+                        <div class="sleep-hm-wrap" style="flex:1">
+                            <input type="time" id="g-waketime" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text);outline:none;color-scheme:dark" oninput="calcSleepDuration();checkReady()">
+                            <div class="sleep-hm-unit">wake</div>
+                        </div>
+                    </div>
+                    <div id="sleep-duration-display" style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:4px"></div>
+                </div>
                 <div class="garmin-field">
-                    <div class="garmin-label">Readiness Score</div>
-                    <input class="garmin-input" type="number" id="g-readiness-score" placeholder="—" min="0" max="100" oninput="syncReadiness('score')">
-                    <div class="garmin-unit">out of 100</div>
-                </div>
-                <div class="garmin-field" style="display:flex;flex-direction:column;justify-content:center">
-                    <div class="garmin-label">Or select</div>
-                    <div class="select-wrap" style="margin-bottom:0">
-                        <select class="readiness-select" id="g-readiness" onchange="syncReadiness('dropdown')" style="font-size:11px;padding:8px 10px">
-                            <option value="">— category —</option>
-                            <option value="prime">Prime (85-100)</option>
-                            <option value="high">High (70-84)</option>
-                            <option value="moderate">Moderate (50-69)</option>
-                            <option value="low">Low (25-49)</option>
-                            <option value="poor">Poor (0-24)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <!-- INJURY/NIGGLE SECTION -->
-            <div class="section-divider" style="margin-bottom:1rem">
-                Any niggles? 
-                <span>optional</span>
-            </div>
-            <div style="margin-bottom:1.5rem">
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem" id="niggle-area-row">
-                    <button class="niggle-btn" onclick="toggleNiggle('none')">All good</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('left_knee')">Left knee</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('right_knee')">Right knee</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('left_shoulder')">Left shoulder</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('right_shoulder')">Right shoulder</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('lower_back')">Lower back</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('left_hamstring')">L. hamstring</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('right_hamstring')">R. hamstring</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('achilles')">Achilles</button>
-                    <button class="niggle-btn" onclick="toggleNiggle('other')">Other</button>
-                </div>
-                <div id="niggle-severity-row" style="display:none;margin-top:.5rem">
-                    <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Severity</div>
-                    <div style="display:flex;gap:8px">
-                        <button class="niggle-sev-btn" onclick="setNiggleSeverity(1)">1 — Minor</button>
-                        <button class="niggle-sev-btn" onclick="setNiggleSeverity(2)">2 — Noticeable</button>
-                        <button class="niggle-sev-btn" onclick="setNiggleSeverity(3)">3 — Concerning</button>
-                    </div>
+                    <div class="garmin-label">Time awake overnight</div>
+                    <input class="garmin-input" type="number" id="g-wakings" placeholder="—" min="0" max="180" oninput="checkReady()">
+                    <div class="garmin-unit">minutes total</div>
                 </div>
             </div>
 
