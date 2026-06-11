@@ -2401,22 +2401,23 @@ function buildGoals(appData){
     if(val&&val>0&&g&&typeof g==='object') g.current=val;
   });
 
-  // Predictions — use best of: PB-based Riegel OR recent training estimate
-  const preds={};
   const distMap={'5k':5000,'10k':10000,'hm':21097,'marathon':42195};
-  const runGoals=GOALS.filter(g=>g&&g.unit==='time'&&g.current);
+  const runGoals=GOALS.filter(g=>g&&g.unit==='time');
 
-  // PB-based predictions
-  if(runGoals.length>0){
-    const anchor=runGoals.find(g=>g.key==='10k')||runGoals.find(g=>g.key==='5k')||runGoals[0];
-    const anchorDist=distMap[anchor.key];
-    Object.entries(distMap).forEach(([key,dist])=>{
-      // Only predict other distances — same distance as anchor has no predictive value
-      if(dist!==anchorDist) preds[key]=predictRaceTime(anchor.current,anchorDist,dist);
-    });
-  }
-
-  // Predictions based on race PBs only via validated Riegel formula
+  // VDOT current fitness estimate from training runs
+  let fitnessEst=null;
+  try{ fitnessEst=estimateCurrentFitness(appData); }catch(e){}
+  const currentFitness={
+    '5k':fitnessEst?fitnessEst.est5K:null,
+    '10k':fitnessEst?fitnessEst.est10K:null,
+    'hm':fitnessEst?fitnessEst.estHM:null,
+    'marathon':fitnessEst?fitnessEst.estMarathon:null
+  };
+  // Historical PBs
+  const pbs={};
+  runGoals.forEach(g=>{if(g.current) pbs[g.key]=g.current;});
+  // preds = current fitness estimates
+  const preds=currentFitness;
 
   // Epley 1RM for bench — scan all sessions
   let best1RM=0;
