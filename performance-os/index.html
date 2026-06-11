@@ -5917,6 +5917,10 @@
         const chartH = H - padT - padB;
         const nPoints = points.length;
 
+        // Y-axis scale — must be defined before coords
+        const yStep = 10;
+        const yMax = Math.ceil(maxKm / yStep) * yStep || 10;
+
         const coords = points.map((p, i) => ({
             x: padL + (i / (nPoints - 1)) * chartW,
             y: padT + chartH - (p.value / yMax) * chartH,
@@ -5927,9 +5931,7 @@
         const pathD = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c.x + ',' + c.y).join(' ');
         const fillD = pathD + ' L' + coords[nPoints - 1].x + ',' + (padT + chartH) + ' L' + coords[0].x + ',' + (padT + chartH) + ' Z';
 
-        // Y-axis with clean 10km increments
-        const yStep = 10;
-        const yMax = Math.ceil(maxKm / yStep) * yStep;
+        // Y-axis labels (yStep/yMax already defined above)
         const yLabels = [];
         for (let v = 0; v <= yMax; v += yStep)
             yLabels.push(v);
