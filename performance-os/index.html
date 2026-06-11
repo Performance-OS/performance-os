@@ -1477,37 +1477,6 @@
         letter-spacing: .06em
     }
 
-    .lift-trend-row {
-        display: flex;
-        gap: 6px;
-        align-items: flex-end;
-        height: 48px;
-        padding: 0 4px
-    }
-
-    .lift-bar-wrap {
-        flex: 0 0 auto;
-        width: 32px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px
-    }
-
-    .lift-bar {
-        width: 24px;
-        background: var(--accent);
-        border-radius: 3px 3px 0 0;
-        min-height: 3px;
-        transition: height .6s ease
-    }
-
-    .lift-bar-label {
-        font-size: 8px;
-        font-family: var(--font-mono);
-        color: var(--muted)
-    }
-
     .lift-trend-latest {
         font-size: 20px;
         font-weight: 700;
@@ -1526,37 +1495,6 @@
         border: 1px solid var(--border);
         border-radius: var(--r);
         padding: 1rem 1.25rem
-    }
-
-    .hrv-trend-row {
-        display: flex;
-        gap: 6px;
-        align-items: flex-end;
-        height: 48px;
-        margin: .75rem 0;
-        padding: 0 4px
-    }
-
-    .hrv-col {
-        flex: 0 0 auto;
-        width: 32px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px
-    }
-
-    .hrv-col-bar {
-        width: 24px;
-        border-radius: 3px 3px 0 0;
-        min-height: 3px;
-        transition: height .6s ease
-    }
-
-    .hrv-col-label {
-        font-size: 8px;
-        font-family: var(--font-mono);
-        color: var(--muted)
     }
 
     .no-data {
@@ -3002,6 +2940,7 @@
                 <button onclick="buildHistoryScreen();switchTab('history')" style="font-size:11px;font-family:var(--font-mono);color:var(--muted2);background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:8px;cursor:pointer;margin-top:.25rem">history →</button>
             </div>
             <div class="log-meta" id="log-meta">—</div>
+            <div id="plan-day-note" style="display:none;font-size:11px;font-family:var(--font-mono);color:var(--muted2);line-height:1.5;margin-bottom:.75rem;padding:.75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
             <div id="log-content"></div>
             <div id="session-note-wrap" style="display:none;margin-top:1rem">
                 <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem">Session note (optional)</div>
@@ -4036,6 +3975,9 @@
         ${dataSection}
         ${stravaSection}
         TODAY'S SESSION: ${getTrainingDay()}
+        TRAINING PLAN FOR TODAY: ${getTrainingPlanDay(dayName) || 'No saved plan — use default structure'}
+        CURRENT WEEK THEME: ${getTrainingPlanWeek() && getTrainingPlanWeek().theme || 'Base Building'}
+        WEEK TARGET VOLUME: ${getTrainingPlanWeek() && getTrainingPlanWeek().totalKm || '25-30km'}
         NUTRITION TYPE: ${nutType} training day
         MACROS: ${macros.cal} kcal | ${macros.protein}g protein | ${macros.carbs}g carbs | ${macros.fat}g fat
 
@@ -4687,6 +4629,17 @@
 
     function buildLogScreen() {
         document.getElementById('log-meta').textContent = dateStr + ' · ' + dayName;
+        // Show plan session detail if available
+        const planDay = getTrainingPlanDay(dayName);
+        const planNote = document.getElementById('plan-day-note');
+        if (planNote) {
+            if (planDay) {
+                planNote.style.display = 'block';
+                planNote.textContent = planDay;
+            } else {
+                planNote.style.display = 'none';
+            }
+        }
         const content = document.getElementById('log-content');
         const saveBtn = document.getElementById('save-session-btn');
 
@@ -5383,83 +5336,6 @@
         return Math.round(knownSecs * Math.pow(targetDist / knownDist, 1.06));
     }
 
-    function estimateCurrentFitness(appData) {
-        // Jack Daniels VDOT approach — estimates current fitness from training runs
-        // Uses HR reserve method (Karvonen) to determine effort level
-        // Ely et al. (2007) heat correction for Singapore (30°C = ~3% slower than race)
-
-        const profile = getProfile();
-        const runs = appData._latestRuns || [];
-        const HEAT_FACTOR = 1.03; // Singapore training runs ~3% slower than race pace
-
-        // Estimate max HR from zones (Z4 ceiling + ~8bpm)
-        const maxHR = profile.z4high + 8;
-        // Resting HR from recent check-ins
-        const recentKeys = Object.keys(appData).filter(k => !k.startsWith('_')).sort().reverse().slice(0, 7);
-        const rhrValues = recentKeys.map(k => appData[k] && appData[k].garmin && appData[k].garmin.rhr).filter(Boolean);
-        const restingHR = rhrValues.length ? Math.round(rhrValues.reduce((s, v) => s + v, 0) / rhrValues.length) : 50;
-        const hrReserve = maxHR - restingHR;
-
-        // Use last 4 weeks of runs with both pace and HR
-        const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const qualityRuns = runs.filter(r =>
-        r.date >= fourWeeksAgo &&
-        r.distance_km >= 3 &&
-        r.avg_pace_per_km &&
-        r.avg_hr &&
-        r.avg_hr > 100
-        );
-
-        if (qualityRuns.length === 0)
-            return null;
-
-        // For each run, calculate effort % and race-equivalent pace
-        let bestVDOT = 0;
-        qualityRuns.forEach(r => {
-            // HR reserve percentage (Karvonen method)
-            const hrReservePct = (r.avg_hr - restingHR) / hrReserve;
-            // Effort factor: at 70% HRR = easy, 85% = threshold, 95% = interval
-            // Race equivalent pace = training pace / effort factor / heat factor
-            // effort factor derived from %HRR → %VO2max relationship (Swain et al. 1994)
-            // %VO2max ≈ 1.24 × %HRR - 0.24 (simplified linear approximation)
-            const vo2pct = Math.min(1.0, Math.max(0.5, (1.24 * hrReservePct) - 0.24));
-
-            // Race-equivalent pace (remove heat penalty, scale by effort)
-            const racePacePerKm = (r.avg_pace_per_km / HEAT_FACTOR) / vo2pct;
-
-            // Convert to estimated 5K time
-            const est5KSecs = racePacePerKm * 60 * 5;
-
-            // VDOT from 5K time (Daniels & Gilbert 1979 table approximation)
-            // VDOT ≈ 0.8664 + (0.1894×e^(-0.012478×t)) + (0.2989×e^(-0.1894×t))
-            // Simplified: use pace-based lookup
-            // At 5K race pace (min/km): VDOT approximation
-            const paceMinkm = est5KSecs / 300; // secs per km → min per km
-            // Daniels approximation: VDOT ≈ 652.0/(pace_min_per_km^1.2965)
-            const vdot = 652.0 / Math.pow(paceMinkm, 1.2965);
-
-            if (vdot > bestVDOT)
-                bestVDOT = vdot;
-        });
-
-        if (bestVDOT === 0)
-            return null;
-
-        // Convert VDOT back to predicted times (Daniels tables)
-        // 5K: t = (652/VDOT)^(1/1.2965) min/km × 5km → seconds
-        const est5KPace = Math.pow(652.0 / bestVDOT, 1 / 1.2965);
-        const est5KSecs = Math.round(est5KPace * 5 * 60);
-
-        return {
-            vdot: Math.round(bestVDOT * 10) / 10,
-            est5K: est5KSecs,
-            est10K: predictRaceTime(est5KSecs, 5000, 10000),
-            estHM: predictRaceTime(est5KSecs, 5000, 21097),
-            estMarathon: predictRaceTime(est5KSecs, 5000, 42195),
-            runsUsed: qualityRuns.length,
-            note: 'Based on ' + qualityRuns.length + ' training runs (last 4 weeks) with Ely heat correction'
-        };
-    }
 
     function buildGoals(appData) {
         let GOALS = getGoals();
@@ -5705,10 +5581,17 @@
         const session = WEEK_SESSIONS[day];
         const label = isToday ? 'Today — ' : isPast ? 'Past — ' : 'Upcoming — ';
 
-        // Build workout detail
+        // Build workout detail — read from _trainingPlan first, fall back to WORKOUTS
+        const planDayContent = getTrainingPlanDay(day);
         const exercises = WORKOUTS[day];
         let workoutHtml = '';
-        if (exercises && exercises.length > 0) {
+        if (planDayContent) {
+            // Use plan content directly as the session description
+            workoutHtml = '<div style="margin-top:.75rem;padding:.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px">'
+            + '<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">From your training plan</div>'
+            + '<div style="font-size:12px;color:var(--text);line-height:1.6">' + planDayContent + '</div>'
+            + '</div>';
+        } else if (exercises && exercises.length > 0) {
             workoutHtml = '<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">';
             exercises.forEach(ex => {
                 // Get reps/load from Monday weekPlan first, then daily briefing
@@ -7962,6 +7845,48 @@
             rb.textContent = '↺ refresh';
             rb.style.opacity = '1';
         }
+    }
+
+    // ── SINGLE SOURCE OF TRUTH — Training Plan ──
+    // All screens read from this function
+    function getTrainingPlanDay(dayName) {
+        const appData = getAppData();
+        const plan = appData._trainingPlan;
+        if (!plan || !plan.plan || !plan.plan.weeks)
+            return null;
+
+        // Find current week in plan
+        const planStart = new Date(plan.generatedDate || plan.updatedDate || todayKey);
+        const weeksSinceStart = Math.max(0, Math.floor((new Date(todayKey) - planStart) / (7 * 24 * 60 * 60 * 1000)));
+        const weekIndex = Math.min(weeksSinceStart, plan.plan.weeks.length - 1);
+        const currentWeek = plan.plan.weeks[weekIndex];
+        if (!currentWeek || !currentWeek.days)
+            return null;
+
+        // Map day name to plan day key (Mon/Tue/Wed/Thu/Fri/Sat/Sun)
+        const dayMap = {
+            'Monday': 'Mon',
+            'Tuesday': 'Tue',
+            'Wednesday': 'Wed',
+            'Thursday': 'Thu',
+            'Friday': 'Fri',
+            'Saturday': 'Sat',
+            'Sunday': 'Sun'
+        };
+        const planKey = dayMap[dayName];
+        return currentWeek.days[planKey] || null;
+    }
+
+    function getTrainingPlanWeek(weekOffset=0) {
+        const appData = getAppData();
+        const plan = appData._trainingPlan;
+        if (!plan || !plan.plan || !plan.plan.weeks)
+            return null;
+
+        const planStart = new Date(plan.generatedDate || plan.updatedDate || todayKey);
+        const currentWeekIndex = Math.max(0, Math.floor((new Date(todayKey) - planStart) / (7 * 24 * 60 * 60 * 1000)));
+        const targetIndex = Math.min(currentWeekIndex + weekOffset, plan.plan.weeks.length - 1);
+        return plan.plan.weeks[Math.max(0, targetIndex)] || null;
     }
 
     // ── INIT ──
