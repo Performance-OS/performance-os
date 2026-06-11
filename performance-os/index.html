@@ -702,6 +702,10 @@ body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-i
     <div class="week-grid" id="week-grid"></div>
     <div class="week-detail" id="week-detail"></div>
 
+    <!-- WEEKLY KM TREND -->
+    <div class="dash-section-label" style="margin-top:1.5rem">Weekly Volume</div>
+    <div id="weekly-km-chart" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1rem"></div>
+
     <!-- RECENT RUNS -->
     <div class="dash-section-label" style="margin-top:1.5rem">Recent Runs</div>
     <div id="runs-container"></div>
@@ -2281,6 +2285,7 @@ function buildDashboard(){
   buildWeekGrid(appData);
   buildRecentRuns(appData);
   buildWeeklyVolumeBar(appData);
+  buildWeeklyKmChart(appData);
   buildLiftTrends(appData);
   buildHRVTrend(appData);
 }
@@ -2294,15 +2299,84 @@ function brzycki1RM(weight,reps){
 
 // ── CAMERON RACE PREDICTION (better than Riegel for longer distances) ──
 // Uses Pete Riegel with a fatigue factor correction
-function predictRaceTime(knownSecs,knownDist,targetDist,applyHeat=false){
-  // Riegel (1977) — validated gold standard formula
-  // Exponent 1.06 per original paper
-  const raw=knownSecs*Math.pow(targetDist/knownDist,1.06);
-  if(!applyHeat) return Math.round(raw);
-  // Ely et al. (2007) heat adjustment — ~1.5% per 10°C above 10°C for training
-  // Singapore avg 30°C = 20°C above threshold = ~3% adjustment
-  // Only apply when predicting from training runs, not race PBs
-  return Math.round(raw*0.97); // 3% faster in race conditions vs Singapore training
+function predictRaceTime(knownSecs,knownDist,targetDist){
+  // Riegel (1977) — validated gold standard formula, exponent 1.06
+  return Math.round(knownSecs*Math.pow(targetDist/knownDist,1.06));
+}
+
+function estimateCurrentFitness(appData){
+  // Jack Daniels VDOT approach — estimates current fitness from training runs
+  // Uses HR reserve method (Karvonen) to determine effort level
+  // Ely et al. (2007) heat correction for Singapore (30°C = ~3% slower than race)
+  
+  const profile=getProfile();
+  const runs=appData._latestRuns||[];
+  const HEAT_FACTOR=1.03; // Singapore training runs ~3% slower than race pace
+  
+  // Estimate max HR from zones (Z4 ceiling + ~8bpm)
+  const maxHR=profile.z4high+8;
+  // Resting HR from recent check-ins
+  const recentKeys=Object.keys(appData).filter(k=>!k.startsWith('_')).sort().reverse().slice(0,7);
+  const rhrValues=recentKeys.map(k=>appData[k]&&appData[k].garmin&&appData[k].garmin.rhr).filter(Boolean);
+  const restingHR=rhrValues.length?Math.round(rhrValues.reduce((s,v)=>s+v,0)/rhrValues.length):50;
+  const hrReserve=maxHR-restingHR;
+
+  // Use last 4 weeks of runs with both pace and HR
+  const fourWeeksAgo=new Date(Date.now()-28*24*60*60*1000).toISOString().split('T')[0];
+  const qualityRuns=runs.filter(r=>
+    r.date>=fourWeeksAgo&&
+    r.distance_km>=3&&
+    r.avg_pace_per_km&&
+    r.avg_hr&&
+    r.avg_hr>100
+  );
+
+  if(qualityRuns.length===0) return null;
+
+  // For each run, calculate effort % and race-equivalent pace
+  let bestVDOT=0;
+  qualityRuns.forEach(r=>{
+    // HR reserve percentage (Karvonen method)
+    const hrReservePct=(r.avg_hr-restingHR)/hrReserve;
+    // Effort factor: at 70% HRR = easy, 85% = threshold, 95% = interval
+    // Race equivalent pace = training pace / effort factor / heat factor
+    // effort factor derived from %HRR → %VO2max relationship (Swain et al. 1994)
+    // %VO2max ≈ 1.24 × %HRR - 0.24 (simplified linear approximation)
+    const vo2pct=Math.min(1.0,Math.max(0.5,(1.24*hrReservePct)-0.24));
+    
+    // Race-equivalent pace (remove heat penalty, scale by effort)
+    const racePacePerKm=(r.avg_pace_per_km/HEAT_FACTOR)/vo2pct;
+    
+    // Convert to estimated 5K time
+    const est5KSecs=racePacePerKm*60*5;
+    
+    // VDOT from 5K time (Daniels & Gilbert 1979 table approximation)
+    // VDOT ≈ 0.8664 + (0.1894×e^(-0.012478×t)) + (0.2989×e^(-0.1894×t))
+    // Simplified: use pace-based lookup
+    // At 5K race pace (min/km): VDOT approximation
+    const paceMinkm=est5KSecs/300; // secs per km → min per km
+    // Daniels approximation: VDOT ≈ 652.0/(pace_min_per_km^1.2965)
+    const vdot=652.0/Math.pow(paceMinkm,1.2965);
+    
+    if(vdot>bestVDOT) bestVDOT=vdot;
+  });
+
+  if(bestVDOT===0) return null;
+
+  // Convert VDOT back to predicted times (Daniels tables)
+  // 5K: t = (652/VDOT)^(1/1.2965) min/km × 5km → seconds
+  const est5KPace=Math.pow(652.0/bestVDOT,1/1.2965);
+  const est5KSecs=Math.round(est5KPace*5*60);
+
+  return {
+    vdot:Math.round(bestVDOT*10)/10,
+    est5K:est5KSecs,
+    est10K:predictRaceTime(est5KSecs,5000,10000),
+    estHM:predictRaceTime(est5KSecs,5000,21097),
+    estMarathon:predictRaceTime(est5KSecs,5000,42195),
+    runsUsed:qualityRuns.length,
+    note:'Based on '+qualityRuns.length+' training runs (last 4 weeks) with Ely heat correction'
+  };
 }
 
 function buildGoals(appData){
@@ -2337,7 +2411,8 @@ function buildGoals(appData){
     const anchor=runGoals.find(g=>g.key==='10k')||runGoals.find(g=>g.key==='5k')||runGoals[0];
     const anchorDist=distMap[anchor.key];
     Object.entries(distMap).forEach(([key,dist])=>{
-      preds[key]=predictRaceTime(anchor.current,anchorDist,dist);
+      // Only predict other distances — same distance as anchor has no predictive value
+      if(dist!==anchorDist) preds[key]=predictRaceTime(anchor.current,anchorDist,dist);
     });
   }
 
@@ -2374,67 +2449,56 @@ function buildGoals(appData){
     }
 
     if(g.unit==='time'&&g.lower){
-      const pb=g.current;
-      const pred=preds[g.key]||null;
+      // Three values:
+      // current = VDOT estimate from recent training (actual fitness right now)
+      // pb = historical best (stored in benchmarks/Strava)  
+      // target = goal time
+      const current=currentFitness[g.key]||g.current;
+      const pb=pbs[g.key]||g.current;
       const target=g.target;
-      // Bar: left=slower of (pb/pred), right=goal, fill from left to faster of (pb/pred)
-      // Range spans from worst to goal
-      const improving=pred&&pred<pb;
-      const worst=pred?Math.max(pb,pred):Math.round(pb*1.08);
-      const range=worst-target;
-      const barColor=pred?(improving?'#60d5a0':'#f56060'):'#60d5f5';
+      if(current&&target){
 
-      // Left label = slower time, right label = goal
-      // Fill endpoint = faster time (or pb if no pred)
-      const leftTime=pred?(improving?pb:pred):pb;
-      const fillTime=pred?(improving?pred:pb):pb;
-      const fillPct=Math.min(96,Math.max(2,Math.round(((worst-fillTime)/range)*100)));
+      // Bar spans from slowest relevant time to target
+      // slowest = worst of (current, pb) + 5% buffer
+      const slowest=Math.max(current,pb,target+30);
+      const range=slowest-target;
 
-      // Label positions
-      const leftLabel=pred?(improving?'PB':'Predicted'):' PB';
-      const midLabel=pred?(improving?'Predicted':'PB'):null;
-      const midTime=pred?(improving?pred:pb):null;
-      // Mid position as percentage for label alignment
-      const midPct=midTime?Math.min(90,Math.max(10,Math.round(((worst-midTime)/range)*100))):null;
+      // Position percentages (0% = right/goal, 100% = left/slowest)
+      const currentPct=Math.min(97,Math.max(3,Math.round(((slowest-current)/range)*97)));
+      const pbPct=Math.min(97,Math.max(3,Math.round(((slowest-pb)/range)*97)));
+      const targetPct=3;
+
+      // Bar color based on current vs pb
+      const improving=current<=pb;
+      const barColor=improving?'var(--success)':'var(--warn)';
+
+      const currentLabel=formatTime(current);
+      const pbLabel=formatTime(pb);
+      const targetLabel=formatTime(target);
+      const gapToPB=current-pb;
+      const gapStr=gapToPB>0?'+'+formatTime(Math.abs(gapToPB))+' off PB':gapToPB<0?formatTime(Math.abs(gapToPB))+' under PB':'at PB';
 
       html+=`<div class="goal-card">
-        <div class="goal-top" style="margin-bottom:.75rem">
-          <div class="goal-name">${g.name}</div>
-          ${pred?`<div style="font-size:10px;font-family:var(--font-mono);color:${barColor}">${improving?'↑ improving':'↓ off pace'}</div>`:''}
-        </div>
-        <div style="position:relative;margin:.5rem 0 1.5rem">
-          <div style="position:relative;height:6px;background:var(--border);border-radius:3px">
-            <div style="position:absolute;left:0;top:0;height:100%;width:${fillPct}%;background:${barColor};border-radius:3px;transition:width 1s ease"></div>
-            <div style="position:absolute;right:0;top:-3px;width:3px;height:12px;background:var(--accent);border-radius:2px"></div>
+        <div class="goal-top"><div class="goal-name">${g.name}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">${fitnessEst?'VDOT '+fitnessEst.vdot:'no data'}</div></div>
+        <div style="position:relative;height:28px;margin:.75rem 0">
+          <div style="position:absolute;width:100%;height:4px;background:var(--border);border-radius:2px;top:50%;transform:translateY(-50%)"></div>
+          <div style="position:absolute;height:4px;background:${barColor};border-radius:2px;top:50%;transform:translateY(-50%);right:${targetPct}%;left:${100-currentPct}%"></div>
+          <div style="position:absolute;top:50%;transform:translate(-50%,-50%);right:${100-currentPct}%" title="Current fitness">
+            <div style="width:12px;height:12px;border-radius:50%;background:${barColor};border:2px solid var(--bg)"></div>
           </div>
-          ${midTime?`
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px">
-            <div>
-              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">${leftLabel}</div>
-              <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:${!improving?barColor:'var(--text)'}">${formatTime(leftTime)}</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">${midLabel}</div>
-              <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:${improving?barColor:'var(--text)'}">${formatTime(midTime)}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Goal</div>
-              <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${formatTime(target)}</div>
-            </div>
-          </div>`:`
-          <div style="display:flex;justify-content:space-between;margin-top:6px">
-            <div>
-              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">PB</div>
-              <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:var(--text)">${formatTime(leftTime)}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Goal</div>
-              <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:var(--accent)">${formatTime(target)}</div>
-            </div>
-          </div>`}
+          ${pb!==current?'<div style="position:absolute;top:50%;transform:translate(-50%,-50%);right:'+(100-pbPct)+'%" title="PB"><div style="width:8px;height:8px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)"></div></div>':''}
+          <div style="position:absolute;right:${targetPct}%;top:50%;transform:translate(50%,-50%)" title="Goal">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)"></div>
+          </div>
         </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--font-mono)">
+          <div style="color:${barColor}">${currentLabel} <span style="color:var(--muted)">(now)</span></div>
+          ${pb!==current?'<div style="color:var(--muted)">'+pbLabel+' PB</div>':''}
+          <div style="color:var(--accent)">${targetLabel} goal</div>
+        </div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:3px">${gapStr}${fitnessEst?' · '+fitnessEst.note:''}</div>
       </div>`;
-
+      }
     } else {
       const pct=Math.min(100,Math.round((g.current/g.target)*100));
       const fillClass=pct>=100?'achieved':pct>=80?'close':'';
@@ -2448,7 +2512,7 @@ function buildGoals(appData){
         <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct">${pct}%</div></div>
         <div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">Target: ${g.target}${g.unit==='kg'?'kg':' reps'}</div></div>
         <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
-        ${bEx?`<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);margin-top:.4rem">Today: ${bEx.load||''} × ${bEx.reps||''}</div>`:''}
+        ${bEx?'<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);margin-top:.4rem">Today: '+(bEx.load||'')+' × '+(bEx.reps||'')+'</div>':''}
       </div>`;
     }
   });
@@ -2662,6 +2726,57 @@ function buildWeeklyVolumeBar(appData){
       <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">target ${targetMin}-${targetMax}km</div>
       <div style="font-size:9px;font-family:var(--font-mono);color:${color}">${weekRuns.length} run${weekRuns.length!==1?'s':''}</div>
     </div>
+  `;
+}
+
+function buildWeeklyKmChart(appData){
+  const container=document.getElementById('weekly-km-chart');
+  if(!container) return;
+
+  const runs=appData._latestRuns||[];
+  if(!runs.length){
+    container.innerHTML='<div class="no-data">No runs yet — sync Strava to see volume trend</div>';
+    return;
+  }
+
+  // Group runs by calendar week (Monday anchor)
+  const weekMap={};
+  runs.forEach(r=>{
+    const d=new Date(r.date);
+    const day=d.getDay();
+    const diff=day===0?-6:1-day;
+    const monday=new Date(d);
+    monday.setDate(d.getDate()+diff);
+    const weekKey=monday.toISOString().split('T')[0];
+    if(!weekMap[weekKey]) weekMap[weekKey]=0;
+    weekMap[weekKey]+=r.distance_km;
+  });
+
+  // Get last 8 weeks sorted
+  const weeks=Object.keys(weekMap).sort().slice(-8);
+  if(weeks.length<2){
+    container.innerHTML='<div class="no-data">Log a few more weeks to see trend</div>';
+    return;
+  }
+
+  const points=weeks.map(w=>({
+    label:new Date(w).toLocaleDateString('en-SG',{day:'numeric',month:'short'}).replace(' ','\n'),
+    value:Math.round(weekMap[w]*10)/10
+  }));
+
+  const maxKm=Math.max(...points.map(p=>p.value));
+  const minKm=Math.max(0,Math.min(...points.map(p=>p.value))-5);
+  const currentWeekKm=weekMap[getThisMonday()]||0;
+  const prevWeekKm=weeks.length>1?weekMap[weeks[weeks.length-2]]||0:0;
+  const trend=currentWeekKm>prevWeekKm?'↑ up from last week':currentWeekKm<prevWeekKm?'↓ down from last week':'— same as last week';
+
+  container.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.25rem">
+      <div style="font-size:18px;font-weight:700;font-family:var(--font-mono);color:var(--accent2)">${Math.round(currentWeekKm*10)/10}km</div>
+      <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">this week</div>
+    </div>
+    ${renderLineChart(points,'var(--accent2)',minKm,maxKm+2)}
+    <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:.25rem">${trend} · last 8 weeks</div>
   `;
 }
 
