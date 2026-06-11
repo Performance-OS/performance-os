@@ -5458,16 +5458,17 @@
     }
 
     function buildGoals(appData) {
-        // Use editable goals if saved, otherwise defaults
-        // Validate and clean goals array to prevent crashes from corrupted data
         let GOALS = getGoals();
         GOALS = GOALS.filter(g => g && typeof g === 'object' && g.key && g.name);
         if (GOALS.length === 0)
             GOALS = JSON.parse(JSON.stringify(DEFAULT_GOALS));
+
         const container = document.getElementById('goals-container');
+        if (!container)
+            return;
         const keys = Object.keys(appData).sort().reverse();
 
-        // Get Strava PBs — top-level cache first
+        // Get Strava PBs
         let stravaPBs = appData._latestPBs || {};
         if (!Object.keys(stravaPBs).length) {
             for (const k of keys) {
@@ -5478,7 +5479,7 @@
             }
         }
 
-        // Update running goals from Strava PBs — fall back to seeded values
+        // Update running goals from Strava PBs
         const effortMap = {
             '5k': '5k',
             '10k': '10k',
@@ -5491,6 +5492,7 @@
                 g.current = val;
         });
 
+        // Cross-distance predictions using Riegel from best known PB
         const distMap = {
             '5k': 5000,
             '10k': 10000,
@@ -5498,63 +5500,38 @@
             'marathon': 42195
         };
         const runGoals = GOALS.filter(g => g && g.unit === 'time');
-
-        // Use Strava best_efforts as predictions — these are your actual fastest recorded times
-        // from GPS data across all runs. Far more accurate than any formula.
-        // Strava keys: '5k', '10k', 'half marathon', 'marathon'
-        const stravaKeyMap = {
-            '5k': '5k',
-            '10k': '10k',
-            'hm': 'half marathon',
-            'marathon': 'marathon'
-        };
         const preds = {};
         const pbs = {};
-
-        // Historical PBs from goals (manually entered or Strava synced)
         runGoals.forEach(g => {
             if (g.current)
                 pbs[g.key] = g.current;
         });
-
-        // Strava best efforts as current fitness indicator
-        // These update every Strava sync — reflect actual recent performance
-        Object.entries(stravaKeyMap).forEach(([goalKey, stravaKey]) => {
-            const stravaTime = stravaPBs[stravaKey];
-            if (stravaTime && stravaTime > 0)
-                preds[goalKey] = stravaTime;
-        });
-
-        // For distances without Strava data, use Riegel from best known Strava time
-        const knownStravaPred = Object.entries(preds).find(([k, v]) => v > 0);
-        if (knownStravaPred) {
-            const [anchorKey, anchorTime] = knownStravaPred;
-            const anchorDist = distMap[anchorKey];
-            Object.entries(distMap).forEach(([key, dist]) => {
-                if (!preds[key] && dist !== anchorDist) {
-                    preds[key] = predictRaceTime(anchorTime, anchorDist, dist);
-                }
-            });
+        if (runGoals.length > 0) {
+            const anchor = runGoals.find(g => g.key === '10k' && g.current) || runGoals.find(g => g.key === '5k' && g.current) || runGoals.find(g => g.current);
+            if (anchor) {
+                const anchorDist = distMap[anchor.key];
+                Object.entries(distMap).forEach(([key, dist]) => {
+                    if (dist !== anchorDist)
+                        preds[key] = predictRaceTime(anchor.current, anchorDist, dist);
+                });
+            }
         }
 
-        // fitnessEst for display purposes only
-        const fitnessEst = Object.keys(preds).length > 0 ? {
-            vdot: null,
-            note: 'From Strava best efforts'
-        } : null;
-
-        // Epley 1RM for bench — scan all sessions
+        // Bench 1RM from logged sessions
         let best1RM = 0;
         for (const k of keys) {
-            const entry = appData[k];
-            if (entry && entry.session && entry.session.exercises && entry.session.exercises.bench) {
-                (entry.session.exercises.bench.sets || []).forEach(s => {
+            const e = appData[k];
+            if (e && e.session && e.session.exercises && e.session.exercises.bench) {
+                const sets = e.session.exercises.bench.sets || [];
+                sets.forEach(s => {
                     if (s.weight && s.reps) {
-                        const e = brzycki1RM(s.weight, s.reps);
-                        if (e > best1RM)
-                            best1RM = e;
+                        const e1rm = s.reps === 1 ? s.weight : Math.round(s.weight * (36 / (37 - Math.min(s.reps, 36))) * 10) / 10;
+                        if (e1rm > best1RM)
+                            best1RM = e1rm;
                     }
                 });
+                if (best1RM > 0)
+                    break;
             }
         }
         if (best1RM > 0) {
@@ -5565,9 +5542,9 @@
 
         // Pull up max
         for (const k of keys) {
-            const entry = appData[k];
-            if (entry && entry.session && entry.session.exercises && entry.session.exercises.ctb_pullups) {
-                const sets = entry.session.exercises.ctb_pullups.sets || [];
+            const e = appData[k];
+            if (e && e.session && e.session.exercises && e.session.exercises.pullups) {
+                const sets = e.session.exercises.pullups.sets || [];
                 const maxR = Math.max(...sets.filter(s => s.reps).map(s => s.reps), 0);
                 if (maxR > 0) {
                     const pullGoal = GOALS.find(g => g.key === 'pullups');
@@ -5579,80 +5556,69 @@
             }
         }
 
-        // Render
+        // Today's briefing workout for strength cards
+        const todayBrf = appData[todayKey] && appData[todayKey].briefing;
+        const bWorkout = todayBrf && todayBrf.training && todayBrf.training.workout;
+
         let html = '';
-        GOALS.forEach(g => {
-            if (!g.current) {
-                html += `<div class="goal-card"><div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct" style="color:var(--muted)">no data yet</div></div></div>`;
+        GOALS.filter(g => g && g.enabled !== false).forEach(g => {
+            if (!g.target)
                 return;
-            }
 
             if (g.unit === 'time' && g.lower) {
-                // Simple bar: PB vs Goal
-                // Predictions removed until Garmin VO2 Max integration is built
-                const pb = pbs[g.key] || g.current;
+                // Running goal bar — PB vs goal, with cross-distance prediction
+                const pb = g.current || null;
+                const pred = preds[g.key] || null;
                 const target = g.target;
-                if (pb && target) {
-                    const current = pb; // use pb as current until proper fitness tracking built
+                if (!pb && !pred)
+                    return;
 
-                    // Bar spans from slowest relevant time to target
-                    // slowest = worst of (current, pb) + 5% buffer
-                    const slowest = Math.max(current, pb, target + 30);
-                    const range = slowest - target;
+                const current = pb || pred;
+                const worst = Math.max(current, target + 30);
+                const range = worst - target;
+                if (range <= 0)
+                    return;
 
-                    // Position percentages (0% = right/goal, 100% = left/slowest)
-                    const currentPct = Math.min(97, Math.max(3, Math.round(((slowest - current) / range) * 97)));
-                    const pbPct = Math.min(97, Math.max(3, Math.round(((slowest - pb) / range) * 97)));
-                    const targetPct = 3;
+                const currentPct = Math.min(96, Math.max(2, Math.round(((worst - current) / range) * 96)));
+                const targetPct = 2;
+                const barColor = current <= target ? 'var(--success)' : 'var(--accent2)';
 
-                    // Bar color based on current vs pb
-                    const improving = current <= pb;
-                    const barColor = improving ? 'var(--success)' : 'var(--warn)';
+                html += `<div class="goal-card">
+                        <div class="goal-top"><div class="goal-name">${g.name}</div></div>
+                        <div style="position:relative;height:24px;margin:.6rem 0">
+                          <div style="position:absolute;width:100%;height:3px;background:var(--border);border-radius:2px;top:50%;transform:translateY(-50%)"></div>
+                          <div style="position:absolute;height:3px;background:${barColor};border-radius:2px;top:50%;transform:translateY(-50%);right:${targetPct}%;left:${100 - currentPct}%"></div>
+                          <div style="position:absolute;top:50%;right:${100 - currentPct}%;transform:translate(50%,-50%)">
+                            <div style="width:10px;height:10px;border-radius:50%;background:${barColor};border:2px solid var(--bg)"></div>
+                          </div>
+                          <div style="position:absolute;top:50%;right:${targetPct}%;transform:translate(50%,-50%)">
+                            <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)"></div>
+                          </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--font-mono)">
+                          <div style="color:${barColor}">${current ? formatTime(current) : '—'} <span style="color:var(--muted)">now</span></div>
+                          <div style="color:var(--accent)">${formatTime(target)} goal</div>
+                        </div>
+                      </div>`;
 
-                    const currentLabel = formatTime(current);
-                    const pbLabel = formatTime(pb);
-                    const targetLabel = formatTime(target);
-                    const gapToPB = current - pb;
-                    const gapStr = gapToPB > 0 ? '+' + formatTime(Math.abs(gapToPB)) + ' off PB' : gapToPB < 0 ? formatTime(Math.abs(gapToPB)) + ' under PB' : 'at PB';
-
-                    html += `<div class="goal-card">
-                            <div class="goal-top"><div class="goal-name">${g.name}</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">${fitnessEst ? 'VDOT ' + fitnessEst.vdot : 'no data'}</div></div>
-                            <div style="position:relative;height:28px;margin:.75rem 0">
-                              <div style="position:absolute;width:100%;height:4px;background:var(--border);border-radius:2px;top:50%;transform:translateY(-50%)"></div>
-                              <div style="position:absolute;height:4px;background:${barColor};border-radius:2px;top:50%;transform:translateY(-50%);right:${targetPct}%;left:${100 - currentPct}%"></div>
-                              <div style="position:absolute;top:50%;transform:translate(-50%,-50%);right:${100 - currentPct}%" title="Current fitness">
-                                <div style="width:12px;height:12px;border-radius:50%;background:${barColor};border:2px solid var(--bg)"></div>
-                              </div>
-                              ${pb !== current ? '<div style="position:absolute;top:50%;transform:translate(-50%,-50%);right:' + (100 - pbPct) + '%" title="PB"><div style="width:8px;height:8px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)"></div></div>' : ''}
-                              <div style="position:absolute;right:${targetPct}%;top:50%;transform:translate(50%,-50%)" title="Goal">
-                                <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)"></div>
-                              </div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--font-mono)">
-                              <div style="color:${barColor}">${currentLabel} <span style="color:var(--muted)">(now)</span></div>
-                              ${pb !== current ? '<div style="color:var(--muted)">' + pbLabel + ' PB</div>' : ''}
-                              <div style="color:var(--accent)">${targetLabel} goal</div>
-                            </div>
-                            <div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:3px">${gapStr}${fitnessEst ? ' · ' + fitnessEst.note : ''}</div>
-                          </div>`;
-                }
-            } else {
-                const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+            } else if (g.unit === 'time' || g.unit === 'kg' || g.unit === 'reps') {
+                // Strength/custom goal bar
+                if (!g.current)
+                    return;
+                const pct = Math.min(100, Math.round(g.lower ? (g.current / g.target) * 100 : (g.current / g.target) * 100));
                 const fillClass = pct >= 100 ? 'achieved' : pct >= 80 ? 'close' : '';
-                const display = g.unit === 'kg' ? (g.current || 0) + 'kg' : (g.current || 0) + ' reps';
-                // Check today's briefing for recommended load/reps
-                const todayBrf = appData[todayKey] && appData[todayKey].briefing;
-                const bWorkout = todayBrf && todayBrf.training && todayBrf.training.workout;
+                const display = g.unit === 'kg' ? (g.current || 0) + 'kg' : (g.unit === 'time' ? formatTime(g.current) : (g.current || 0) + ' reps');
                 const searchTerm = g.key === 'bench' ? 'bench' : g.key === 'pullups' ? 'pull' : g.key;
                 const bEx = bWorkout && bWorkout.find(w => w.exercise && w.exercise.toLowerCase().includes(searchTerm));
                 html += `<div class="goal-card">
                         <div class="goal-top"><div class="goal-name">${g.name}</div><div class="goal-pct">${pct}%</div></div>
-                        <div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">Target: ${g.target}${g.unit === 'kg' ? 'kg' : ' reps'}</div></div>
+                        <div class="goal-values"><div class="goal-current">${display}</div><div class="goal-target">Target: ${g.target}${g.unit === 'kg' ? 'kg' : g.unit === 'reps' ? ' reps' : ''}</div></div>
                         <div class="goal-bar"><div class="goal-fill ${fillClass}" style="width:${pct}%"></div></div>
                         ${bEx ? '<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);margin-top:.4rem">Today: ' + (bEx.load || '') + ' × ' + (bEx.reps || '') + '</div>' : ''}
                       </div>`;
             }
         });
+
         container.innerHTML = html;
     }
 
