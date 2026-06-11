@@ -4742,11 +4742,15 @@
                   <div id="mobility-saved" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.5rem">✓ Saved</div>
                 </div>`;
             saveBtn.style.display = 'none';
+            // Add mobility card to rest days too
+            setTimeout(() => buildMobilityCard(), 50);
             return;
         }
 
         if (RUN_DAYS.includes(dayName)) {
             const todayRun = (getAppData()._latestRuns || []).find(r => r.date === todayKey);
+            // Add mobility card after run content renders
+            setTimeout(() => buildMobilityCard(), 100);
             if (todayRun) {
                 const pace = todayRun.avg_pace_per_km ? `${Math.floor(todayRun.avg_pace_per_km)}:${Math.round((todayRun.avg_pace_per_km % 1) * 60).toString().padStart(2, '0')}/km` : '';
                 content.innerHTML = `<div style="text-align:center;padding:1.5rem 1rem">
@@ -5969,6 +5973,20 @@
           `;
     }
 
+    function showHRVTip(date, hrv, avg) {
+        const tip = document.getElementById('hrv-tip');
+        if (!tip)
+            return;
+        const diff = hrv - avg;
+        const diffStr = diff >= 0 ? '+' + diff + 'ms' : diff + 'ms';
+        const status = hrv < avg * 0.9 ? '⚠ suppressed' : hrv > avg * 1.1 ? '↑ elevated' : 'normal';
+        tip.style.display = 'block';
+        tip.textContent = date + ': ' + hrv + 'ms (' + diffStr + ' vs avg · ' + status + ')';
+        setTimeout(() => {
+            tip.style.display = 'none';
+        }, 8000);
+    }
+
     function showWeekKmTip(el) {
         const tip = document.getElementById('weekly-km-tip');
         if (!tip)
@@ -5979,7 +5997,7 @@
         tip.textContent = 'w/c ' + label + ': ' + val + 'km';
         setTimeout(() => {
             tip.style.display = 'none';
-        }, 3000);
+        }, 8000);
     }
 
     function buildRecentRuns(appData) {
@@ -6044,8 +6062,11 @@
         // Build fill path (area under line)
         const fillD = pathD + ` L${coords[coords.length - 1].x},${padT + chartH} L${coords[0].x},${padT + chartH} Z`;
 
-        // Dots
-        const dots = coords.map(c => `<circle cx="${c.x}" cy="${c.y}" r="3" fill="${c.alert ? 'var(--danger)' : color}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+        // Dots with optional onclick
+        const dots = coords.map((c, i) => {
+            const onclick = points[i].onclick ? (' onclick="' + points[i].onclick + '"') : '';
+            return '<circle cx="' + c.x + '" cy="' + c.y + '" r="4" fill="' + (c.alert ? 'var(--danger)' : color) + '" stroke="var(--surface)" stroke-width="1.5" style="cursor:' + (onclick ? 'pointer' : 'default') + '"' + onclick + '/>';
+        }).join('');
 
         // Labels
         const labels = coords.map(c => `<text x="${c.x}" y="${H - 4}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="var(--muted)">${c.label}</text>`).join('');
@@ -6137,7 +6158,8 @@
         container.innerHTML = `
             <div class="hrv-trend-card">
               <div class="lift-trend-name">HRV — 7-day rolling avg ${avg}ms</div>
-              ${renderLineChart(recent.map(d => ({label: new Date(d.date).toLocaleDateString('en-SG', {weekday: 'short'}).slice(0, 2),value: d.hrv,alert: d.hrv < avg * 0.9})), 'var(--accent2)', Math.min(...recent.map(d => d.hrv)) * 0.95, Math.max(...recent.map(d => d.hrv)) * 1.05)}
+              <div id="hrv-tip" style="display:none;font-size:11px;font-family:var(--font-mono);color:var(--accent2);margin-bottom:.25rem"></div>
+              ${renderLineChart(recent.map(d => {const dayLabel = new Date(d.date).toLocaleDateString('en-SG', {weekday: 'short',day: 'numeric',month: 'short'});const diff = d.hrv - avg;const diffStr = diff >= 0 ? '+' + diff : String(diff);const status = d.hrv < avg * 0.9 ? 'suppressed' : d.hrv > avg * 1.1 ? 'elevated' : 'normal';return {label: new Date(d.date).toLocaleDateString('en-SG', {weekday: 'short'}).slice(0, 2),value: d.hrv,alert: d.hrv < avg * 0.9,onclick: 'showHRVTip(\'' + dayLabel + '\',' + d.hrv + ',' + avg + ')'};}), 'var(--accent2)', Math.min(...recent.map(d => d.hrv)) * 0.95, Math.max(...recent.map(d => d.hrv)) * 1.05)}
               <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:.5rem">
                 <div style="font-size:18px;font-weight:700;font-family:var(--font-mono);color:var(--accent2)">${latest.hrv}ms</div>
                 <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">today</div>
