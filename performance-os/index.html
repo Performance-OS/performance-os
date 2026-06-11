@@ -3429,10 +3429,14 @@
         lss(SK.apiKey, ak);
         lss(SK.clientId, cid);
         lss(SK.stravaToken, st);
-        // Also save to cookies for persistence across Safari sessions
+        // Save to cookies
         setCookie('c_' + SK.apiKey, ak);
         setCookie('c_' + SK.clientId, cid);
         setCookie('c_' + SK.stravaToken, st);
+        // Save to IndexedDB — most persistent on iOS Safari PWA
+        saveKeysToIDB();
+        // Save to IndexedDB — most persistent on iOS
+        saveKeysToIDB();
         // Save to Drive after Google auth completes — triggered in auth callback
         showScreen('auth');
         initGoogleAuth();
@@ -3456,6 +3460,7 @@
                 lss(SK.tokenExpiry, Date.now() + (resp.expires_in * 1000));
                 setCookie('c_' + SK.accessToken, resp.access_token);
                 setCookie('c_' + SK.tokenExpiry, String(Date.now() + (resp.expires_in * 1000)));
+                saveKeysToIDB();
                 showAuthStatus('Connected to Google Drive ✓', 'ok');
                 // Save config to Drive so it survives localStorage clearing
                 const ak = ls(SK.apiKey),
@@ -4115,11 +4120,7 @@
 
         const container = document.getElementById('briefing-content');
         container.innerHTML = `
-            <div class="b-card">
-              <div class="b-card-header"><span class="b-tag tag-readiness">Readiness</span></div>
-              <div class="b-body">${b.readiness}</div>
-              ${g.hrv ? '<div class="hrv-bar"><div class="hrv-fill" style="width:' + hrvW + '%"></div></div><div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">HRV ' + g.hrv + 'ms</div>' : ''}
-            </div>
+            <!-- Readiness card removed — info shown in check-in chips instead -->
             <div class="b-card">
               <div class="b-card-header"><span class="b-tag tag-training">Training</span></div>
               <div class="b-headline">${b.training.headline}</div>
@@ -4945,6 +4946,23 @@
             };
         appData[todayKey].dailyMobility = checked;
         appData[todayKey].mobilityDate = todayKey;
+        // Also save as a proper mobility session so it appears in history
+        if (checked) {
+            if (!appData[todayKey].mobility || !appData[todayKey].mobility.completed) {
+                appData[todayKey].mobility = {
+                    completed: ['Daily mobility — 10-15 min stretching'],
+                    note: '',
+                    date: todayKey
+                };
+            }
+        } else {
+            // Unchecked — remove mobility session if it was auto-created
+            if (appData[todayKey].mobility &&
+            appData[todayKey].mobility.completed &&
+            appData[todayKey].mobility.completed[0] === 'Daily mobility — 10-15 min stretching') {
+                delete appData[todayKey].mobility;
+            }
+        }
         lss(SK.data, JSON.stringify(appData));
         saveToDrive(appData);
     }
@@ -5677,9 +5695,10 @@
             workoutHtml = runDetails[day] || `<div style="margin-top:.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2)">${sessionName}</div>`;
         }
 
-        // Check for Strava run on this day
+        // Check for Strava run on this day — only show on run days or if explicitly logged
         const allRuns = getAppData()._latestRuns || [];
-        const dayRun = allRuns.find(r => r.date === dateKey);
+        const RUN_DAY_NAMES = ['Tuesday', 'Thursday', 'Saturday'];
+        const dayRun = (RUN_DAY_NAMES.includes(day) || isPast) ? allRuns.find(r => r.date === dateKey) : null;
         const runHtml = dayRun ? `<div style="margin-top:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
             <div style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">Strava run</div>
             <div style="display:flex;justify-content:space-between">
@@ -5747,7 +5766,30 @@
         if (!container)
             return;
 
-        const runs = appData._latestRuns || [];
+        // Gather ALL stored runs from Drive data — not just last 10 from cache
+        const allStoredRuns = [];
+        const seen = new Set();
+        // Add from top-level cache
+        (appData._latestRuns || []).forEach(r => {
+            const key = r.date + '_' + r.distance_km;
+            if (!seen.has(key)) {
+                seen.add(key);
+                allStoredRuns.push(r);
+            }
+        });
+        // Add from daily entries (older runs)
+        Object.keys(appData).filter(k => !k.startsWith('_')).forEach(k => {
+            if (appData[k] && appData[k].stravaRuns) {
+                appData[k].stravaRuns.forEach(r => {
+                    const key = r.date + '_' + r.distance_km;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        allStoredRuns.push(r);
+                    }
+                });
+            }
+        });
+        const runs = allStoredRuns;
 
         // Build 8-week grid starting from 8 weeks ago — include zero weeks
         const weeks = [];
@@ -7018,6 +7060,17 @@
                     type: 'mobility',
                     mobility: entry.mobility
                 });
+            } else if (entry && entry.dailyMobility === true && entry.mobilityDate === k) {
+                // Fallback: dailyMobility tick saved without full mobility object
+                sessions.push({
+                    date: k,
+                    type: 'mobility',
+                    mobility: {
+                        completed: ['Daily mobility — 10-15 min stretching'],
+                        note: '',
+                        date: k
+                    }
+                });
             }
         });
         // Add ALL stored runs across all days in Drive
@@ -8011,7 +8064,8 @@
         banner.id = 'calendar-conflict-banner';
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--surface);border-bottom:1px solid rgba(200,245,96,.3);padding:12px 16px;';
 
-        const conflictList = conflicts.map(c => c.title + ' (' + c.start + (c.end !== c.start ? ' → ' + c.end : '') + ')').join(', ');
+        // Show anonymised labels only — never display event titles
+        const conflictList = conflicts.map(c => c.label + ' (' + c.start + (c.end !== c.start ? ' → ' + c.end : '') + ')').join(', ');
 
         banner.innerHTML = `
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--accent);margin-bottom:4px">📅 Calendar conflicts detected</div>
@@ -8038,9 +8092,14 @@
             return;
 
         // Auto-message coach with conflict details
-        const conflictText = conflicts.map(c =>
-        c.title + ' from ' + c.start + ' to ' + c.end + ': ' + c.impact
-        ).join('. ');
+        // Build anonymised conflict description for Claude
+        // Event titles NEVER sent — only dates, type, and training impact
+        const conflictText = conflicts.map(c => {
+            const dateRange = c.start + (c.end && c.end !== c.start ? ' to ' + c.end : '');
+            const gymNote = c.gymAvailable === false ? 'gym unavailable' : 'gym available';
+            const runNote = c.runningAvailable === false ? 'running unavailable' : 'outdoor running possible';
+            return c.label + ' ' + dateRange + ' — ' + gymNote + ', ' + runNote;
+        }).join('. ');
 
         // Pre-fill coach message and trigger
         const input = document.getElementById('coach-message-input');
@@ -8055,11 +8114,85 @@
             setTimeout(async () => {
                 const el = document.getElementById('coach-message-input');
                 if (el) {
-                    el.value = 'Calendar conflicts detected: ' + conflictText + '. Please update my training plan to work around these dates.';
+                    el.value = 'My calendar has the following scheduling constraints that need reflecting in my training plan: ' + conflictText + '. Please adjust the plan accordingly.';
                     await messageCoach();
                 }
             }, 800);
         }
+    }
+
+    // ── INDEXEDDB — most persistent storage on iOS Safari PWA ──
+    // localStorage and cookies both get cleared; IndexedDB persists much better
+    const IDB_NAME = 'performance_os';
+    const IDB_STORE = 'keys';
+    let _idb = null;
+
+    async function idbOpen() {
+        if (_idb)
+            return _idb;
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = e => {
+                e.target.result.createObjectStore(IDB_STORE);
+            };
+            req.onsuccess = e => {
+                _idb = e.target.result;
+                resolve(_idb);
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function idbSet(key, value) {
+        try {
+            const db = await idbOpen();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(value, key);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function idbGet(key) {
+        try {
+            const db = await idbOpen();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const req = tx.objectStore(IDB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function saveKeysToIDB() {
+        // Save all critical keys to IndexedDB
+        const keys = [SK.apiKey, SK.clientId, SK.stravaToken, SK.accessToken, SK.tokenExpiry, SK.fileId];
+        for (const k of keys) {
+            const v = ls(k);
+            if (v)
+                await idbSet(k, v);
+        }
+    }
+
+    async function restoreKeysFromIDB() {
+        // Restore keys from IndexedDB to localStorage
+        const keys = [SK.apiKey, SK.clientId, SK.stravaToken, SK.accessToken, SK.tokenExpiry, SK.fileId];
+        let restored = false;
+        for (const k of keys) {
+            const v = await idbGet(k);
+            if (v && !ls(k)) {
+                lss(k, v);
+                restored = true;
+            }
+        }
+        return restored;
     }
 
     // ── INIT ──
@@ -8067,25 +8200,25 @@
         // Step 1: Try localStorage
         let apiKey = ls(SK.apiKey);
         let clientId = ls(SK.clientId);
-        let stravaToken = ls(SK.stravaToken);
 
-        // Step 2: If localStorage empty, restore from cookies (survives Safari clears)
+        // Step 2: Try cookies
         if (!apiKey)
             apiKey = getCookie('c_' + SK.apiKey);
         if (!clientId)
             clientId = getCookie('c_' + SK.clientId);
-        if (!stravaToken)
-            stravaToken = getCookie('c_' + SK.stravaToken);
-
-        // Restore to localStorage if found in cookies
         if (apiKey)
             lss(SK.apiKey, apiKey);
         if (clientId)
             lss(SK.clientId, clientId);
-        if (stravaToken)
-            lss(SK.stravaToken, stravaToken);
 
-        // Step 3: If still missing, show setup
+        // Step 3: Try IndexedDB — most persistent on iOS Safari PWA
+        if (!apiKey || !clientId) {
+            await restoreKeysFromIDB();
+            apiKey = ls(SK.apiKey);
+            clientId = ls(SK.clientId);
+        }
+
+        // Step 4: If still missing, show setup
         if (!apiKey || !clientId) {
             showScreen('setup');
             return;
@@ -8142,8 +8275,23 @@
         refreshStravaBackground();
         // Check Google Calendar for training conflicts (once per day, silent)
         checkCalendarAndUpdatePlan().catch(e => console.log('Calendar check failed:', e));
-        // Only show checkin if briefing wasn't already loaded by restoreToday
-        if (document.querySelector('.screen.active').id !== 'screen-briefing') {
+        // ALWAYS show check-in if today's check-in not completed
+        // Check-in = garmin OR manual data exists for today
+        const appDataCheck = getAppData();
+        const todayEntry = appDataCheck[todayKey];
+        const checkedInToday = todayEntry && (todayEntry.garmin || todayEntry.manual);
+        if (!checkedInToday) {
+            showScreen('checkin');
+            hideTabBar();
+        } else if (todayEntry && todayEntry.briefing) {
+            // Already checked in and have briefing — show briefing
+            const nutType = getNutritionType();
+            const macros = MACROS[nutType];
+            buildBriefingScreen(todayEntry.briefing, macros, todayEntry.garmin || {}, true);
+            showScreen('briefing');
+            showTabBar();
+        } else {
+            // Checked in but no briefing yet
             showScreen('checkin');
             hideTabBar();
         }
