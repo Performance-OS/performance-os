@@ -4051,7 +4051,7 @@
         LAST LIFT SESSION DATA will be injected below if available — use it for progressive overload recommendations
 
         Respond ONLY as a JSON object, no markdown, no backticks:
-        {"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing"},"focus":"one sharp sentence"}
+        {"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing. IMPORTANT: Alex runs before 7am so pre-run nutrition must be practical for early morning (light snack 20-30min before, not a full meal 60-90min before). Never suggest eating 60-90min before a pre-7am run. For rest days omit timing. Never say double session unless it genuinely is one."},"focus":"one sharp sentence"}
 
         PLAN ADHERENCE: Follow the saved training plan exactly. Only deviate if readiness score is below 40, injury is flagged (severity 2+), or illness is selected as recovery reason. Minor HRV fluctuations should NOT change the plan — adjust load only (±5-10%), never change exercises or session type.
 
@@ -7117,7 +7117,7 @@
             return;
         const appData = getAppData();
 
-        // Gather all sessions — gym AND runs
+        // Gather all sessions — gym, runs AND mobility/yoga
         const sessions = [];
         const allRuns = appData._latestRuns || [];
         Object.keys(appData).filter(k => !k.startsWith('_')).sort().reverse().forEach(k => {
@@ -7127,6 +7127,13 @@
                     date: k,
                     type: 'lift',
                     session: entry.session
+                });
+            }
+            if (entry && entry.mobility && entry.mobility.completed && entry.mobility.completed.length > 0) {
+                sessions.push({
+                    date: k,
+                    type: 'mobility',
+                    mobility: entry.mobility
                 });
             }
         });
@@ -7170,14 +7177,18 @@
                 Tuesday: 'Z2 Run',
                 Thursday: 'Intervals'
             };
-            filterRow.innerHTML = `<button class="history-filter-btn${historyFilter === 'all' ? ' active' : ''}" onclick="filterHistory('all',this)">All</button>`
-            + (hasRuns ? `<button class="history-filter-btn${historyFilter === 'run' ? ' active' : ''}" onclick="filterHistory('run',this)">Runs</button>` : '')
-            + uniqueDays.map(d => `<button class="history-filter-btn${historyFilter === d ? ' active' : ''}" onclick="filterHistory('${d}',this)">${dayLabels[d] || d}</button>`).join('');
+            const hasMobility = sessions.some(s => s.type === 'mobility');
+            const allBtn = '<button class="history-filter-btn' + (historyFilter === 'all' ? ' active' : '') + '" onclick="filterHistory(`all`,this)">All</button>';
+            const runBtn = hasRuns ? '<button class="history-filter-btn' + (historyFilter === 'run' ? ' active' : '') + '" onclick="filterHistory(`run`,this)">Runs</button>' : '';
+            const mobBtn = hasMobility ? '<button class="history-filter-btn' + (historyFilter === 'mobility' ? ' active' : '') + '" onclick="filterHistory(`mobility`,this)">Yoga</button>' : '';
+            const dayBtns = uniqueDays.map(d => '<button class="history-filter-btn' + (historyFilter === d ? ' active' : '') + '" onclick="filterHistory(`' + d + '`,this)">' + (dayLabels[d] || d) + '</button>').join('');
+            filterRow.innerHTML = allBtn + runBtn + mobBtn + dayBtns;
         }
 
         // Filter
         const filtered = historyFilter === 'all' ? sessions :
         historyFilter === 'run' ? sessions.filter(s => s.type === 'run') :
+        historyFilter === 'mobility' ? sessions.filter(s => s.type === 'mobility') :
         sessions.filter(s => s.type === 'lift' && s.session && s.session.day === historyFilter);
 
         if (filtered.length === 0) {
@@ -7186,6 +7197,29 @@
         }
 
         container.innerHTML = filtered.map((s, idx) => {
+            // Mobility/yoga entry
+            if (s.type === 'mobility') {
+                const dateObj = new Date(s.date);
+                const dateLabel = dateObj.toLocaleDateString('en-SG', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short'
+                });
+                const items = s.mobility.completed || [];
+                return '<div class="history-session">'
+                + '<div class="history-session-header" onclick="toggleHistorySession(`hsess-' + idx + '`)">'
+                + '<div class="history-session-left">'
+                + '<div class="history-session-type">Mobility / Yoga</div>'
+                + '<div class="history-session-date">' + dateLabel + '</div>'
+                + '</div>'
+                + '<div class="history-session-right">'
+                + '<div class="history-session-pr" style="color:var(--accent3);border-color:rgba(208,160,255,.3);background:rgba(208,160,255,.07)">🧘 ' + items.length + ' items</div>'
+                + '</div></div>'
+                + '<div class="history-session-body" id="hsess-' + idx + '">'
+                + (items.map(i => '<div class="history-ex-row"><div class="history-ex-name">' + i + '</div></div>').join(''))
+                + (s.mobility.note ? '<div class="history-note">"' + s.mobility.note + '"</div>' : '')
+                + '</div></div>';
+            }
             // Run entry
             if (s.type === 'run') {
                 const r = s.run;
@@ -7829,15 +7863,24 @@
                 "totalKm": "Xkm",
                 "keyFocus": "focus",
                 "days": {
-                  "Mon": "session detail",
-                  "Tue": "session detail",
-                  "Wed": "session detail",
-                  "Thu": "session detail",
-                  "Sat": "session detail",
-                  "Sun": "yoga/mobility"
+                  "Mon": "Push session — bench focus with specific loads",
+                  "Tue": "Zone 2 run — specific distance and HR",
+                  "Wed": "Pull session — muscle up progression",
+                  "Thu": "Interval run — specific structure",
+                  "Fri": "Rest / active recovery",
+                  "Sat": "Long run + legs session — specific details",
+                  "Sun": "Yoga + mobility 30-45 min"
                 }
               }
             ]
+
+        CRITICAL RULES FOR PLAN UPDATES:
+        - Generate ALL 8 weeks, not just 4
+        - Include ALL days including gym sessions — never remove Mon Push, Wed Pull, Sat Legs
+        - Only ADD or MODIFY specific sessions the athlete requested
+        - Keep the base Push/Pull/Legs structure intact always
+        - If athlete asks to add a race/parkrun on Saturday, add it to Sat alongside or instead of long run — keep legs session
+        - Preserve volume progression (10% weekly increase)
           }
         }
 
