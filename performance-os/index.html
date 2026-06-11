@@ -2990,9 +2990,8 @@
 
             <div id="calendar-container"></div>
         </div>
-        >
 
-          <!-- LIFT LOGGER SCREEN -->
+        <!-- LIFT LOGGER SCREEN -->
         <div class="screen" id="screen-log">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
                 <div class="log-title" style="margin-bottom:0">
@@ -4023,7 +4022,7 @@
         if (fallbackOpen)
             dataSection += `\nMANUAL CHECK-IN:\n- Hours slept: ${parseFloat(document.getElementById('sleep-slider').value).toFixed(1)}\n- Sleep quality: ${m.quality}/5\n- Morning energy: ${m.energy}/5\n`;
 
-        const prompt = `You are ${getProfile().name}'s personal performance coach AI. Today is ${dayName}, ${dateStr}. ${getProfile().name} is ${getProfile().age}, based in ${getProfile().location}. Heat and humidity always factor into running advice. Currently in early heat acclimatisation phase (4-6 weeks) — HR runs 15-20bpm higher than temperate climate for same effort. Prescribe time-based intervals (e.g. 30s hard / 90s easy) not pace-based. Easy runs by HR only, never by pace. Expect 5:00-5:30/km to feel like Z4 — this is normal and will improve. Training base: ${getProfile().base}.
+        const prompt = `You are ${getProfile().name}'s personal performance coach AI. Today is ${dayName}, ${dateStr}. ${getProfile().name} is ${getProfile().age}, based in ${getProfile().location}. Heat and humidity always factor into running advice. Athlete is acclimatised to Singapore heat (9 months) but returning from injury layoff — detraining means aerobic base needs rebuilding. HR runs higher than expected for pace due to detraining not heat. Prescribe time-based intervals (30s hard / 90s easy) not pace-based. Easy runs strictly by HR feel — conversational pace. Do NOT comment on pace being slow. Focus on HR zones and consistency. Zones will recalibrate naturally over 4-6 weeks of consistent training. Training base: ${getProfile().base}.
 
         ${dataSection}
         ${stravaSection}
@@ -4044,6 +4043,8 @@
 
         Respond ONLY as a JSON object, no markdown, no backticks:
         {"readiness":"2 sentences, specific numbers, flag low HRV/battery directly","training":{"headline":"max 7 words","intensity":"prime|high|moderate|reduced|rest","details":"2-3 sentences specific coaching, adjust for readiness","workout":[{"exercise":"name","sets":"4 sets","reps":"6-8 reps","load":"72-75kg or HR target","notes":"one cue"}],"heat_note":"one Singapore tip, omit key if rest/yoga day"},"nutrition":{"cal":${macros.cal},"protein":${macros.protein},"carbs":${macros.carbs},"fat":${macros.fat},"timing":"2-3 sentences pre/post session timing"},"focus":"one sharp sentence"}
+
+        PLAN ADHERENCE: Follow the saved training plan exactly. Only deviate if readiness score is below 40, injury is flagged (severity 2+), or illness is selected as recovery reason. Minor HRV fluctuations should NOT change the plan — adjust load only (±5-10%), never change exercises or session type.
 
         WORKOUT RULES — use EXACTLY these set/rep schemes to match the lift logger:
         Monday Push: Bench 4x6-8, OHP 3x8-10, Incline DB 3x10-12, Lateral raises 3x15, Tricep dips 3x10-15. Bench load ~82-85% e1RM.
@@ -4199,6 +4200,20 @@
           `;
         container.style.display = 'block';
         showTabBar();
+        // Show Monday briefing if available (any day of week)
+        const mondaySec2 = document.getElementById('monday-section');
+        if (mondaySec2) {
+            const appData3 = getAppData();
+            const lastMonday = getThisMonday();
+            const mondayData2 = appData3[lastMonday];
+            if (mondayData2 && mondayData2.mondayBriefing) {
+                mondaySec2.style.display = 'block';
+                renderMondayBriefing(mondayData2.mondayBriefing);
+            } else if (isMonday) {
+                mondaySec2.style.display = 'block';
+                generateMondayBriefing();
+            }
+        }
         // Restore daily mobility tick — only if saved today
         const mobilityCheck = document.getElementById('mobility-daily-check');
         if (mobilityCheck) {
@@ -4937,42 +4952,6 @@
         } catch (e) {}
     }
 
-    function restoreLogState() {
-        try {
-            const saved = JSON.parse(localStorage.getItem('pos_lift_state') || '{}');
-            if (!saved.day || saved.day !== dayName || saved.date !== todayKey)
-                return false;
-            // Restore swaps
-            if (saved.swaps)
-                Object.assign(SESSION_SWAPS, saved.swaps);
-            // Restore note
-            const noteEl = document.getElementById('session-note');
-            if (noteEl && saved.note)
-                noteEl.value = saved.note;
-            // Restore sets
-            if (saved.sets) {
-                Object.entries(saved.sets).forEach(([key, sets]) => {
-                    const container = document.getElementById('sets-' + key);
-                    if (!container)
-                        return;
-                    // Clear auto-added first set
-                    container.innerHTML = '';
-                    sets.forEach((s, i) => {
-                        addSet(key);
-                        const w = document.getElementById('w-' + key + '-' + (i + 1));
-                        const r = document.getElementById('r-' + key + '-' + (i + 1));
-                        if (w)
-                            w.value = s.weight || '';
-                        if (r)
-                            r.value = s.reps || '';
-                    });
-                });
-            }
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
 
     function saveDailyMobility(checked) {
         const appData = getAppData();
@@ -5082,36 +5061,6 @@
         return null;
     }
 
-    function saveLiftCache() {
-        // Auto-save current lift state to localStorage so tab switches don't lose data
-        const exercises = WORKOUTS[dayName];
-        if (!exercises)
-            return;
-        const cache = {
-            day: dayName,
-            date: todayKey,
-            sets: {}
-        };
-        exercises.forEach(ex => {
-            const container = document.getElementById('sets-' + ex.key);
-            if (!container)
-                return;
-            const sets = [];
-            Array.from(container.children).forEach((row, i) => {
-                const w = document.getElementById('w-' + ex.key + '-' + (i + 1));
-                const r = document.getElementById('r-' + ex.key + '-' + (i + 1));
-                sets.push({
-                    weight: w ? w.value : '',
-                    reps: r ? r.value : ''
-                });
-            });
-            cache.sets[ex.key] = sets;
-        });
-        const noteEl = document.getElementById('session-note');
-        if (noteEl)
-            cache.note = noteEl.value;
-        lss(SK.liftCache, JSON.stringify(cache));
-    }
 
     function restoreLiftCache() {
         try {
@@ -7111,18 +7060,8 @@
         const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
         return match ? decodeURIComponent(match[1]) : null;
     }
-    function deleteCookie(name) {
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-    }
 
     // Enhanced storage — writes to localStorage AND cookie
-    function lssPlus(key, value) {
-        lss(key, value);
-        // Store critical keys in cookies too
-        const cookieKeys = [SK.apiKey, SK.clientId, SK.stravaToken, SK.accessToken, SK.tokenExpiry, SK.fileId];
-        if (cookieKeys.includes(key))
-            setCookie('c_' + key, value);
-    }
 
     // Enhanced read — checks localStorage first, falls back to cookie
     function lsPlus(key) {
@@ -7138,23 +7077,6 @@
     }
 
     // ── RESTORE FROM DRIVE CONFIG if localStorage cleared ──
-    async function tryRestoreFromDriveConfig() {
-        try {
-            // Try to get a token using any stored refresh capability
-            const storedClient = getCookie('c_' + SK.clientId);
-            if (!storedClient)
-                return;
-            lss(SK.clientId, storedClient);
-            // Restore other keys from cookies
-            [SK.apiKey, SK.stravaToken, SK.fileId].forEach(k => {
-                const v = getCookie('c_' + k);
-                if (v)
-                    lss(k, v);
-            });
-        } catch (e) {
-            console.log('Config restore failed:', e);
-        }
-    }
 
     // ── EDITABLE GOALS SYSTEM ──
     const DEFAULT_GOALS = [
