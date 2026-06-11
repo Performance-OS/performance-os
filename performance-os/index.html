@@ -2940,6 +2940,7 @@
         </div>
 
         <!-- TAB BAR -->
+        <button id="refresh-btn" onclick="refreshApp()" style="display:none;position:fixed;top:12px;right:16px;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;font-family:var(--font-mono);color:var(--muted2);cursor:pointer">↺ refresh</button>
         <div class="tab-bar" id="tab-bar" style="display:none">
             <button class="tab-btn active" id="tab-briefing" onclick="switchTab('briefing')">
                 <svg viewBox="0 0 24 24">
@@ -2970,21 +2971,28 @@
         <!-- CALENDAR SCREEN (placeholder) -->
         <div class="screen" id="screen-calendar">
             <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Calendar</div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:2rem">Google Calendar integration</div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;text-align:center">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:1rem">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/>
-                    <line x1="16" y1="2" x2="16" y2="6"/>
-                    <line x1="8" y1="2" x2="8" y2="6"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:.5rem">Coming in Stage 5</div>
-                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);line-height:1.7">Google Calendar will connect here — showing your upcoming training sessions, travel, work commitments and auto-adapting your plan around them.</div>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
+                Training
+                <br>
+                Calendar
             </div>
-        </div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your plan toward your goals</div>
 
-        <!-- LIFT LOGGER SCREEN -->
+            <!-- COACH MESSAGE -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.25rem">
+                <div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Message your coach</div>
+                <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.75rem">Tell Claude what you want to adjust — races, travel, goals, anything.</div>
+                <textarea id="coach-message-input" placeholder="e.g. I want to do parkrun on 28th June, adjust the plan around it..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:none;height:80px;line-height:1.5;transition:border-color .15s" onfocus="this.style.borderColor='rgba(200,245,96,.4)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+                <button onclick="messageCoach()" id="coach-message-btn" style="width:100%;margin-top:.75rem;padding:12px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--r);font-size:13px;font-weight:700;font-family:var(--font-display);cursor:pointer;transition:opacity .15s">Ask your coach →</button>
+                <div id="coach-message-loading" style="display:none;text-align:center;padding:.75rem;font-size:11px;font-family:var(--font-mono);color:var(--muted)">Coach is thinking...</div>
+                <div id="coach-message-response" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font-mono);color:var(--text);line-height:1.6"></div>
+            </div>
+
+            <div id="calendar-container"></div>
+        </div>
+        >
+
+          <!-- LIFT LOGGER SCREEN -->
         <div class="screen" id="screen-log">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.25rem">
                 <div class="log-title" style="margin-bottom:0">
@@ -4015,7 +4023,7 @@
         if (fallbackOpen)
             dataSection += `\nMANUAL CHECK-IN:\n- Hours slept: ${parseFloat(document.getElementById('sleep-slider').value).toFixed(1)}\n- Sleep quality: ${m.quality}/5\n- Morning energy: ${m.energy}/5\n`;
 
-        const prompt = `You are ${getProfile().name}'s personal performance coach AI. Today is ${dayName}, ${dateStr}. ${getProfile().name} is ${getProfile().age}, based in ${getProfile().location}. Heat and humidity always factor into running advice. Training base: ${getProfile().base}.
+        const prompt = `You are ${getProfile().name}'s personal performance coach AI. Today is ${dayName}, ${dateStr}. ${getProfile().name} is ${getProfile().age}, based in ${getProfile().location}. Heat and humidity always factor into running advice. Currently in early heat acclimatisation phase (4-6 weeks) — HR runs 15-20bpm higher than temperate climate for same effort. Prescribe time-based intervals (e.g. 30s hard / 90s easy) not pace-based. Easy runs by HR only, never by pace. Expect 5:00-5:30/km to feel like Z4 — this is normal and will improve. Training base: ${getProfile().base}.
 
         ${dataSection}
         ${stravaSection}
@@ -4191,11 +4199,16 @@
           `;
         container.style.display = 'block';
         showTabBar();
-        // Restore daily mobility tick
+        // Restore daily mobility tick — only if saved today
         const mobilityCheck = document.getElementById('mobility-daily-check');
         if (mobilityCheck) {
             const appData2 = getAppData();
-            mobilityCheck.checked = appData2[todayKey] && appData2[todayKey].dailyMobility === true;
+            const todayEntry2 = appData2[todayKey];
+            mobilityCheck.checked = todayEntry2 && todayEntry2.dailyMobility === true;
+            // Reset if saved date doesn't match today
+            if (todayEntry2 && todayEntry2.mobilityDate && todayEntry2.mobilityDate !== todayKey) {
+                mobilityCheck.checked = false;
+            }
         }
         // If Monday — show weekly review section and generate if needed
         if (isMonday) {
@@ -4234,9 +4247,15 @@
     // ── TAB BAR ──
     function showTabBar() {
         document.getElementById('tab-bar').style.display = 'flex';
+        const rb = document.getElementById('refresh-btn');
+        if (rb)
+            rb.style.display = 'block';
     }
     function hideTabBar() {
         document.getElementById('tab-bar').style.display = 'none';
+        const rb = document.getElementById('refresh-btn');
+        if (rb)
+            rb.style.display = 'none';
     }
 
     function switchTab(tab) {
@@ -4662,7 +4681,9 @@
         const isForceRebuild = window._forceLogRebuild;
         if (isForceRebuild)
             window._forceLogRebuild = false;
-        if (!isForceRebuild) {
+        // Run days and rest days never show session complete screen
+        const isLiftDay = !RUN_DAYS.includes(dayName) && !REST_DAYS.includes(dayName);
+        if (!isForceRebuild && isLiftDay) {
             const todayData = getAppData()[todayKey];
             if (todayData && todayData.session) {
                 const sessionType = dayName === 'Monday' ? 'Push' : dayName === 'Wednesday' ? 'Pull' : 'Legs';
@@ -4960,6 +4981,7 @@
                 date: todayKey
             };
         appData[todayKey].dailyMobility = checked;
+        appData[todayKey].mobilityDate = todayKey;
         lss(SK.data, JSON.stringify(appData));
         saveToDrive(appData);
     }
@@ -7567,6 +7589,153 @@
         if (el)
             el.classList.toggle('open');
     }
+
+    async function messageCoach() {
+        const input = document.getElementById('coach-message-input');
+        const message = input?.value?.trim();
+        if (!message)
+            return;
+
+        const btn = document.getElementById('coach-message-btn');
+        const loading = document.getElementById('coach-message-loading');
+        const response = document.getElementById('coach-message-response');
+
+        btn.style.display = 'none';
+        loading.style.display = 'block';
+        response.style.display = 'none';
+
+        const appData = getAppData();
+        const plan = appData._trainingPlan;
+        const races = appData._races || [];
+        const goals = getGoals();
+        const profile = getProfile();
+        const latestRuns = appData._latestRuns || [];
+        const recentKm = latestRuns.slice(0, 5).reduce((s, r) => s + r.distance_km, 0);
+
+        const currentPlanSummary = plan ? `Current plan: "${plan.plan.blockTitle}" — ${plan.plan.blockGoal}
+        Weeks: ${plan.plan.weeks.map(w => 'Week ' + w.weekNum + ' (' + w.theme + '): ' + w.totalKm).join(', ')}` : 'No saved training plan — using default weekly structure.';
+
+        const prompt = `You are ${profile.name}'s personal performance coach. The athlete has a message for you about adjusting their training plan.
+
+        ATHLETE PROFILE:
+        - Age: ${profile.age}, ${profile.location}
+        - Goals: ${goals.filter(g => g.enabled).map(g => g.name + ' → ' + g.target + (g.unit === 'time' ? '' : g.unit)).join(', ')}
+        - Current weekly volume: ~${Math.round(recentKm)}km from last 5 runs
+
+        CURRENT PLAN:
+        ${currentPlanSummary}
+
+        UPCOMING RACES:
+        ${races.length ? races.map(r => r.name + ' (' + r.distance + ') on ' + r.date).join(', ') : 'None scheduled'}
+
+        ATHLETE MESSAGE: "${message}"
+
+        Respond as a coach would — acknowledge what they want, explain what you're adjusting and why, then provide the updated plan.
+
+        Respond ONLY as JSON, no markdown, no backticks:
+        {
+          "coachResponse": "2-3 sentences acknowledging the request and explaining what you changed",
+          "planUpdated": true or false,
+          "updatedPlan": {
+            "blockTitle": "title",
+            "blockGoal": "goal",
+            "coachNote": "updated coaching note",
+            "weeks": [
+              {
+                "weekNum": 1,
+                "theme": "theme",
+                "totalKm": "Xkm",
+                "keyFocus": "focus",
+                "days": {
+                  "Mon": "session detail",
+                  "Tue": "session detail",
+                  "Wed": "session detail",
+                  "Thu": "session detail",
+                  "Sat": "session detail",
+                  "Sun": "yoga/mobility"
+                }
+              }
+            ]
+          }
+        }
+
+        If no plan change is needed (e.g. just answering a question), set planUpdated to false and updatedPlan to null.`;
+
+        try {
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': lsPlus(SK.apiKey),
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-5',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }]
+                })
+            });
+            const data = await res.json();
+            const raw = data.content[0].text.replace(/```json|```/g, '').trim();
+            const result = JSON.parse(raw);
+
+            loading.style.display = 'none';
+            response.style.display = 'block';
+            response.innerHTML = `<div style="color:var(--accent);font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">Coach</div>${result.coachResponse}`;
+
+            if (result.planUpdated && result.updatedPlan) {
+                // Update the saved plan
+                appData._trainingPlan = {
+                    plan: result.updatedPlan,
+                    generatedDate: appData._trainingPlan?.generatedDate || todayKey,
+                    updatedDate: todayKey,
+                    focus: appData._trainingPlan?.focus || 'adjusted'
+                };
+                lss(SK.data, JSON.stringify(appData));
+                saveToDrive(appData);
+                response.innerHTML += `<div style="margin-top:.5rem;font-size:10px;font-family:var(--font-mono);color:var(--success)">✓ Plan updated — calendar and dashboard refreshed</div>`;
+                // Rebuild calendar and week grid
+                setTimeout(() => {
+                    buildCalendarScreen();
+                    buildDashboard();
+                }, 500);
+            }
+
+            input.value = '';
+            btn.style.display = 'block';
+        } catch (e) {
+            loading.style.display = 'none';
+            btn.style.display = 'block';
+            response.style.display = 'block';
+            response.innerHTML = `<div style="color:var(--danger)">Error: ${e.message}</div>`;
+        }
+    }
+    async function refreshApp() {
+        const rb = document.getElementById('refresh-btn');
+        if (rb) {
+            rb.textContent = '↺ ...';
+            rb.style.opacity = '0.6';
+        }
+        try {
+            const fresh = await loadFromDrive();
+            if (fresh)
+                lss(SK.data, JSON.stringify(fresh));
+            const activeBtn = document.querySelector('.tab-btn.active');
+            if (activeBtn) {
+                const tab = activeBtn.id.replace('tab-', '');
+                switchTab(tab);
+            }
+        } catch (e) {}
+        if (rb) {
+            rb.textContent = '↺ refresh';
+            rb.style.opacity = '1';
+        }
+    }
+
     // ── INIT ──
     async function init() {
         let apiKey = ls(SK.apiKey);
