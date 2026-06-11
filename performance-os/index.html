@@ -5695,10 +5695,9 @@
             workoutHtml = runDetails[day] || `<div style="margin-top:.5rem;font-size:12px;font-family:var(--font-mono);color:var(--muted2)">${sessionName}</div>`;
         }
 
-        // Check for Strava run on this day — only show on run days or if explicitly logged
+        // Check for Strava run on this day — show if a run actually exists for this exact date
         const allRuns = getAppData()._latestRuns || [];
-        const RUN_DAY_NAMES = ['Tuesday', 'Thursday', 'Saturday'];
-        const dayRun = (RUN_DAY_NAMES.includes(day) || isPast) ? allRuns.find(r => r.date === dateKey) : null;
+        const dayRun = allRuns.find(r => r.date === dateKey) || null;
         const runHtml = dayRun ? `<div style="margin-top:.75rem;padding:.75rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
             <div style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">Strava run</div>
             <div style="display:flex;justify-content:space-between">
