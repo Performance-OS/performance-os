@@ -4689,26 +4689,11 @@
 
         if (REST_DAYS.includes(dayName)) {
             const isSunday = dayName === 'Sunday';
-            const mobilityKey = 'mobility_' + todayKey;
-            const savedMobility = localStorage.getItem(mobilityKey);
-            const mobilityOptions = isSunday ?
-            ['Sun salutations', 'Hip flexor stretch', 'Hamstring stretch', 'Pigeon pose', 'Thoracic rotation', 'Glute stretch', 'Calf stretch', 'Child\'s pose'] :
-            ['Hip flexor stretch', 'Quad stretch', 'Hamstring stretch', 'Calf stretch', 'Shoulder rolls', 'Spinal twist'];
             content.innerHTML = `<div style="padding:1rem 0">
-                  <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:.25rem">${isSunday ? 'Yoga + Mobility' : 'Morning Mobility'}</div>
-                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1rem">${isSunday ? '30-45 min · tick off as you go' : '10-15 min · pre-session routine'}</div>
-                  <div id="mobility-checklist" style="margin-bottom:1rem">
-                    ${mobilityOptions.map((item, i) => {const checked = savedMobility && JSON.parse(savedMobility).includes(item);return `<div style="display:flex;align-items:center;gap:10px;padding:.5rem 0;border-bottom:1px solid var(--border)">
-                            <input type="checkbox" id="mob-${i}" ${checked ? 'checked' : ''} onchange="saveMobility()" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)">
-                            <label for="mob-${i}" style="font-size:13px;color:var(--text);cursor:pointer">${item}</label>
-                          </div>`;}).join('')}
-                  </div>
-                  <textarea id="mobility-note" placeholder="Add a note (how you felt, anything tight)..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:none;height:60px">${savedMobility ? JSON.parse(savedMobility).note || '' : ''}</textarea>
-                  <button onclick="saveMobilitySession()" style="width:100%;margin-top:.75rem;padding:12px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--r);font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer">Save mobility session →</button>
-                  <div id="mobility-saved" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.5rem">✓ Saved</div>
+                  <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:.25rem">${isSunday ? 'Yoga + Mobility' : 'Rest Day'}</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1rem">${isSunday ? '30-45 min yoga · tick off your daily mobility below' : 'Active recovery · tick off your daily mobility below'}</div>
                 </div>`;
             saveBtn.style.display = 'none';
-            // Add mobility card to rest days too
             setTimeout(() => buildMobilityCard(), 50);
             return;
         }
