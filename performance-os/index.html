@@ -7974,44 +7974,144 @@
         if (!events || !events.length)
             return [];
 
-        // Keywords that indicate training impact
-        const TRAVEL_KEYWORDS = ['travel', 'flight', 'holiday', 'vacation', 'trip', 'away', 'conference', 'offsite'];
-        const GYM_UNAVAILABLE = ['gym closed', 'no gym', 'hotel'];
+        // All classification done locally — event titles NEVER sent to Claude
+        // Only anonymised impact labels are stored and sent
+
+        const KEYWORDS = {
+            holiday: ['holiday', 'vacation', 'annual leave', 'pto', 'leave', 'day off', 'time off'],
+            travel: ['flight', 'airport', 'transit', 'travelling', 'traveling'],
+            workingAway: ['offsite', 'conference', 'business trip', 'client visit', 'away day', 'summit', 'retreat'],
+            social: ['dinner', 'drinks', 'party', 'event', 'gala', 'wedding', 'birthday', 'night out'],
+            earlyStart: ['early', 'breakfast meeting', 'morning call'],
+            lateFinish: ['late', 'evening', 'dinner', 'drinks', 'night']
+        };
+
+        function classify(title, ev) {
+            const t = title.toLowerCase();
+            const isAllDay = !!ev.start?.date;
+            const startTime = ev.start?.dateTime;
+            const endTime = ev.end?.dateTime;
+
+            // Check end time for late finishes (after 10pm)
+            let isLateFinish = false;
+            if (endTime) {
+                const endHour = parseInt(endTime.split('T')[1]?.split(':')[0] || '0');
+                if (endHour >= 22 || endHour <= 2)
+                    isLateFinish = true;
+            }
+            // Check start time for early starts (before 7am)
+            let isEarlyStart = false;
+            if (startTime) {
+                const startHour = parseInt(startTime.split('T')[1]?.split(':')[0] || '9');
+                if (startHour <= 7)
+                    isEarlyStart = true;
+            }
+
+            if (KEYWORDS.holiday.some(k => t.includes(k)))
+                return {
+                    type: 'holiday',
+                    label: 'Holiday / annual leave',
+                    gymAvailable: false,
+                    runningAvailable: true,
+                    trainingNote: 'Away from home — bodyweight and running only, no gym access'
+                };
+
+            if (KEYWORDS.travel.some(k => t.includes(k)))
+                return {
+                    type: 'travel',
+                    label: 'Travel day',
+                    gymAvailable: false,
+                    runningAvailable: false,
+                    trainingNote: 'Travel day — prioritise recovery, minimal training'
+                };
+
+            if (KEYWORDS.workingAway.some(k => t.includes(k)))
+                return {
+                    type: 'workingAway',
+                    label: 'Working away from base',
+                    gymAvailable: false,
+                    runningAvailable: true,
+                    trainingNote: 'Working away — gym unavailable, outdoor running possible'
+                };
+
+            if (KEYWORDS.social.some(k => t.includes(k)) || isLateFinish)
+                return {
+                    type: 'social',
+                    label: 'Late social commitment',
+                    gymAvailable: true,
+                    runningAvailable: true,
+                    trainingNote: 'Late night — next day recovery may be affected, adjust intensity if needed'
+                };
+
+            if (isEarlyStart)
+                return {
+                    type: 'earlyStart',
+                    label: 'Early start commitment',
+                    gymAvailable: true,
+                    runningAvailable: false,
+                    trainingNote: 'Early start — skip morning run, train at lunch or evening if possible'
+                };
+
+            // Multi-day full-day events = likely holiday/leave even without keywords
+            if (isAllDay && ev.end?.date) {
+                const days = Math.round((new Date(ev.end.date) - new Date(ev.start.date)) / (24 * 60 * 60 * 1000));
+                if (days >= 5)
+                    return {
+                        type: 'holiday',
+                        label: 'Extended time away (5+ days)',
+                        gymAvailable: false,
+                        runningAvailable: true,
+                        trainingNote: 'Extended absence — maintain running, bodyweight only'
+                    };
+                if (days >= 3)
+                    return {
+                        type: 'multiDay',
+                        label: 'Multi-day commitment',
+                        gymAvailable: false,
+                        runningAvailable: true,
+                        trainingNote: 'Multi-day event — adjust plan for limited gym access'
+                    };
+                if (days >= 1)
+                    return {
+                        type: 'fullDay',
+                        label: 'Full day commitment',
+                        gymAvailable: true,
+                        runningAvailable: false,
+                        trainingNote: 'Full day event — may miss morning training, plan accordingly'
+                    };
+            }
+
+            return null; // Normal work meeting — no training impact
+        }
 
         const conflicts = [];
+        const seen = new Set();
 
         events.forEach(ev => {
-            const title = (ev.summary || '').toLowerCase();
+            const title = (ev.summary || '');
             const start = ev.start?.date || ev.start?.dateTime?.split('T')[0];
             const end = ev.end?.date || ev.end?.dateTime?.split('T')[0];
             if (!start)
                 return;
 
-            // Check for travel/away events
-            if (TRAVEL_KEYWORDS.some(k => title.includes(k))) {
-                conflicts.push({
-                    type: 'travel',
-                    title: ev.summary,
-                    start,
-                    end: end || start,
-                    impact: 'Away from home — gym likely unavailable, outdoor running possible'
-                });
-            }
+            const classification = classify(title, ev);
+            if (!classification)
+                return; // Normal meeting — skip
 
-            else // Check for full day events that span 3+ days (holidays)
-            if (ev.start?.date && ev.end?.date) {
-                const days = Math.round((new Date(end) - new Date(start)) / (24 * 60 * 60 * 1000));
-                if (days >= 3) {
-                    conflicts.push({
-                        type: 'holiday',
-                        title: ev.summary,
-                        start,
-                        end,
-                        impact: 'Multi-day event — training may need adjustment'
-                    });
-                }
-            }
+            // Deduplicate by start date + type
+            const key = start + '_' + classification.type;
+            if (seen.has(key))
+                return;
+            seen.add(key);
+
+            conflicts.push({
+                ...classification,
+                start,
+                end: end || start
+
+            });
         });
+        // Note: original title is deliberately NOT stored
 
         return conflicts;
     }
@@ -8022,9 +8122,10 @@
         if (!plan)
             return; // No plan to update
 
-        // Only check once per day
+        // Check once per day, but always check if no conflicts saved yet
         const lastCheck = appData._calendarLastCheck;
-        if (lastCheck === todayKey)
+        const hasConflicts = appData._calendarConflicts && appData._calendarConflicts.length > 0;
+        if (lastCheck === todayKey && hasConflicts)
             return;
 
         const events = await fetchGoogleCalendar();
@@ -8044,7 +8145,7 @@
         // Check if any conflicts are new (not already in plan)
         const existingConflicts = plan.calendarConflicts || [];
         const newConflicts = conflicts.filter(c =>
-        !existingConflicts.find(e => e.start === c.start && e.title === c.title)
+        !existingConflicts.find(e => e.start === c.start && e.label === c.label)
         );
 
         if (newConflicts.length === 0)
@@ -8060,12 +8161,15 @@
         banner.id = 'calendar-conflict-banner';
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--surface);border-bottom:1px solid rgba(200,245,96,.3);padding:12px 16px;';
 
-        // Show anonymised labels only — never display event titles
-        const conflictList = conflicts.map(c => c.label + ' (' + c.start + (c.end !== c.start ? ' → ' + c.end : '') + ')').join(', ');
+        // Show anonymised labels — grouped by type for readability
+        const conflictList = conflicts.map(c => {
+            const dates = c.start + (c.end && c.end !== c.start ? ' → ' + c.end : '');
+            return c.label + ' (' + dates + ')';
+        }).join('\n');
 
         banner.innerHTML = `
             <div style="font-size:11px;font-family:var(--font-mono);color:var(--accent);margin-bottom:4px">📅 Calendar conflicts detected</div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:8px">${conflictList}</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted2);margin-bottom:8px;white-space:pre-line">${conflictList}</div>
             <div style="display:flex;gap:8px">
               <button onclick="updatePlanForCalendar()" style="font-size:11px;font-family:var(--font-mono);padding:6px 12px;background:var(--accent);color:#0a0a0a;border:none;border-radius:8px;cursor:pointer">Update plan →</button>
               <button onclick="dismissCalendarBanner()" style="font-size:11px;font-family:var(--font-mono);padding:6px 12px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer">Dismiss</button>
@@ -8089,12 +8193,10 @@
 
         // Auto-message coach with conflict details
         // Build anonymised conflict description for Claude
-        // Event titles NEVER sent — only dates, type, and training impact
+        // Event titles NEVER sent — only anonymised type, dates and training impact
         const conflictText = conflicts.map(c => {
             const dateRange = c.start + (c.end && c.end !== c.start ? ' to ' + c.end : '');
-            const gymNote = c.gymAvailable === false ? 'gym unavailable' : 'gym available';
-            const runNote = c.runningAvailable === false ? 'running unavailable' : 'outdoor running possible';
-            return c.label + ' ' + dateRange + ' — ' + gymNote + ', ' + runNote;
+            return c.label + ' ' + dateRange + ': ' + c.trainingNote;
         }).join('. ');
 
         // Pre-fill coach message and trigger
