@@ -3139,6 +3139,7 @@
 
     <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
 
+    <script src="nutrition.js"></script>
     <script>
     const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const now = new Date();
@@ -3293,7 +3294,6 @@
             console.log('Config save error:', e);
         }
     }
-
 
     function saveSetup() {
         const ak = document.getElementById('api-key-input').value.trim();
@@ -4838,7 +4838,6 @@
         } catch (e) {}
     }
 
-
     function saveDailyMobility(checked) {
         const appData = getAppData();
         if (!appData[todayKey])
@@ -4876,7 +4875,6 @@
             note
         }]));
     }
-
 
     function buildLogScreenForce() {
         // Clear today's session flag temporarily to allow re-logging
@@ -4937,7 +4935,6 @@
         }
         return null;
     }
-
 
     function restoreLiftCache() {
         try {
@@ -5221,7 +5218,6 @@
         // Riegel (1977) — validated gold standard formula, exponent 1.06
         return Math.round(knownSecs * Math.pow(targetDist / knownDist, 1.06));
     }
-
 
     function buildGoals(appData) {
         let GOALS = getGoals();
@@ -6715,12 +6711,6 @@
         3: '20-24km',
         4: '26-32km'
     };
-
-
-
-
-
-
 
     function renderTrainingPlan(plan) {
         const container = document.getElementById('plan-weeks-container');
