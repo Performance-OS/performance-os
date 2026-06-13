@@ -3438,6 +3438,7 @@
         setCookie('c_' + SK.stravaToken, st);
         // Save to IndexedDB — most persistent on iOS Safari PWA
         saveKeysToIDB(); // async — saves to IndexedDB for iOS persistence
+        saveToKeychain(ak, cid, st); // async — saves to iOS Keychain
         // Save to Drive after Google auth completes — triggered in auth callback
         showScreen('auth');
         initGoogleAuth();
@@ -8441,6 +8442,59 @@
         return restored;
     }
 
+    // ── iOS KEYCHAIN via Credential Management API ──
+    // Stores keys in iPhone's native Keychain — survives app restarts, 
+    // iOS updates, and storage clears. Most persistent option on iOS.
+    const KEYCHAIN_ID = 'performance-os-keys';
+
+    async function saveToKeychain(apiKey, clientId, stravaToken) {
+        if (!window.PasswordCredential)
+            return false;
+        try {
+            // Pack all three keys into password field as JSON
+            const cred = new PasswordCredential({
+                id: KEYCHAIN_ID,
+                name: 'Performance OS',
+                password: JSON.stringify({
+                    apiKey,
+                    clientId,
+                    stravaToken
+                })
+            });
+            await navigator.credentials.store(cred);
+            console.log('Keys saved to Keychain ✓');
+            return true;
+        } catch (e) {
+            console.log('Keychain save failed:', e);
+            return false;
+        }
+    }
+
+    async function restoreFromKeychain() {
+        if (!window.PasswordCredential)
+            return false;
+        try {
+            const cred = await navigator.credentials.get({
+                password: true,
+                mediation: 'silent' // Never show a UI prompt
+            });
+            if (!cred || cred.id !== KEYCHAIN_ID)
+                return false;
+            const keys = JSON.parse(cred.password);
+            if (keys.apiKey)
+                lss(SK.apiKey, keys.apiKey);
+            if (keys.clientId)
+                lss(SK.clientId, keys.clientId);
+            if (keys.stravaToken)
+                lss(SK.stravaToken, keys.stravaToken);
+            console.log('Keys restored from Keychain ✓');
+            return !!(keys.apiKey && keys.clientId);
+        } catch (e) {
+            console.log('Keychain restore failed:', e);
+            return false;
+        }
+    }
+
     // ── INIT ──
     async function init() {
         // Step 1: Try localStorage
@@ -8457,7 +8511,14 @@
         if (clientId)
             lss(SK.clientId, clientId);
 
-        // Step 3: Try IndexedDB — most persistent on iOS Safari PWA
+        // Step 3: Try iOS Keychain (most persistent on iPhone)
+        if (!apiKey || !clientId) {
+            await restoreFromKeychain();
+            apiKey = ls(SK.apiKey);
+            clientId = ls(SK.clientId);
+        }
+
+        // Step 4: Try IndexedDB
         if (!apiKey || !clientId) {
             await restoreKeysFromIDB();
             apiKey = ls(SK.apiKey);
