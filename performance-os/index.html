@@ -3152,7 +3152,16 @@
     const todayKey = (() => {
         const d = new Date();
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    })(); // local date not UTC
+    })()
+
+    function getThisMonday() {
+        const d = new Date();
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    ; // local date not UTC
     document.getElementById('day-tag').textContent = dayName;
 
     const SK = {
