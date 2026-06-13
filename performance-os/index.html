@@ -3437,9 +3437,7 @@
         setCookie('c_' + SK.clientId, cid);
         setCookie('c_' + SK.stravaToken, st);
         // Save to IndexedDB — most persistent on iOS Safari PWA
-        saveKeysToIDB();
-        // Save to IndexedDB — most persistent on iOS
-        saveKeysToIDB();
+        saveKeysToIDB(); // async — saves to IndexedDB for iOS persistence
         // Save to Drive after Google auth completes — triggered in auth callback
         showScreen('auth');
         initGoogleAuth();
@@ -3568,6 +3566,9 @@
             lss(SK.data, JSON.stringify(appData));
             // Save to Drive in background — don't await, don't block UI
             saveToDrive(appData);
+            // Rebuild km chart with fresh run data
+            if (document.getElementById('weekly-km-chart'))
+                buildWeeklyKmChart(appData);
             console.log('Strava refreshed:', runs.length, 'runs loaded');
         } catch (e) {
             console.log('Background Strava refresh failed:', e);
@@ -3609,8 +3610,10 @@
                 });
             }
             const saved = await res.json();
-            if (saved.id)
+            if (saved.id) {
                 lss(SK.fileId, saved.id);
+                saveKeysToIDB();
+            }
             return true;
         } catch (e) {
             console.log('Drive save:', e);
@@ -4263,6 +4266,9 @@
         } else if (tab === 'log') {
             buildLogScreen();
             showScreen('log');
+        } else if (tab === 'data') {
+            buildDataScreen();
+            showScreen('data');
         } else if (tab === 'dashboard') {
             buildDashboard();
             buildWeekGrid(getAppData());
@@ -7732,6 +7738,149 @@
             currentWeekEl.classList.add('open');
     }
 
+    // ── DATA MANAGEMENT ──
+    async function showDataScreen() {
+        switchTab('data');
+        buildDataScreen();
+    }
+
+    async function buildDataScreen() {
+        const container = document.getElementById('data-management-container');
+        if (!container)
+            return;
+        container.innerHTML = '<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);padding:1rem 0">Loading data...</div>';
+
+        const appData = getAppData();
+        const fileId = ls(SK.fileId);
+
+        // Count data
+        const dateKeys = Object.keys(appData).filter(k => !k.startsWith('_') && k.match(/^\d{4}-\d{2}-\d{2}$/));
+        const hasTrainingPlan = !!appData._trainingPlan;
+        const hasCalendarCache = !!appData._calendarLastCheck;
+        const runCount = (appData._latestRuns || []).length;
+        const sessionCount = dateKeys.filter(k => appData[k] && appData[k].session).length;
+        const checkinCount = dateKeys.filter(k => appData[k] && (appData[k].garmin || appData[k].manual)).length;
+
+        container.innerHTML = `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem">
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Your data</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem">
+                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted2)">Check-ins: <span style="color:var(--text)">${checkinCount}</span></div>
+                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted2)">Sessions: <span style="color:var(--text)">${sessionCount}</span></div>
+                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted2)">Strava runs: <span style="color:var(--text)">${runCount}</span></div>
+                <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted2)">Training plan: <span style="color:${hasTrainingPlan ? 'var(--success)' : 'var(--muted)'}">${hasTrainingPlan ? 'Saved' : 'None'}</span></div>
+              </div>
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">Drive file ID: ${fileId ? fileId.slice(0, 20) + '...' : 'Not found'}</div>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem">
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Reset options</div>
+
+              <div style="display:flex;flex-direction:column;gap:.75rem">
+                <div>
+                  <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:2px">Clear calendar cache</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Forces fresh calendar check on next app open. ${hasCalendarCache ? 'Last checked: ' + appData._calendarLastCheck : 'Not checked yet.'}</div>
+                  <button onclick="clearCalendarCache()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--accent2);border:1px solid rgba(96,213,160,.3);border-radius:8px;cursor:pointer">Clear calendar cache</button>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:.75rem">
+                  <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:2px">Reset training plan</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Removes saved plan so you can generate a fresh one via coach. Keeps all history, goals and check-ins.</div>
+                  <button onclick="resetTrainingPlan()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--warn);border:1px solid rgba(245,166,35,.3);border-radius:8px;cursor:pointer">Reset training plan</button>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:.75rem">
+                  <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:2px">Clear stale briefings</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Removes cached weekly briefings older than 7 days. Keeps all session and check-in history.</div>
+                  <button onclick="clearStaleBriefings()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--accent2);border:1px solid rgba(96,213,160,.3);border-radius:8px;cursor:pointer">Clear old briefings</button>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:.75rem">
+                  <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:2px">Full reset</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Removes training plan, calendar cache, and all briefings. Keeps history, goals, profile, benchmarks, Strava data.</div>
+                  <button onclick="fullReset()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--danger);border:1px solid rgba(245,96,96,.3);border-radius:8px;cursor:pointer">Full reset</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="data-action-msg" style="display:none;text-align:center;padding:1rem;font-size:12px;font-family:var(--font-mono);color:var(--success)"></div>
+          `;
+    }
+
+    function showDataMsg(msg, color='var(--success)') {
+        const el = document.getElementById('data-action-msg');
+        if (!el)
+            return;
+        el.style.display = 'block';
+        el.style.color = color;
+        el.textContent = msg;
+        setTimeout(() => {
+            el.style.display = 'none';
+        }, 4000);
+    }
+
+    async function clearCalendarCache() {
+        const appData = getAppData();
+        delete appData._calendarLastCheck;
+        delete appData._calendarConflicts;
+        lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
+        showDataMsg('✓ Calendar cache cleared — will re-check on next app open');
+        buildDataScreen();
+    }
+
+    async function resetTrainingPlan() {
+        if (!confirm('Reset training plan? Your history, goals and check-ins are safe.'))
+            return;
+        const appData = getAppData();
+        delete appData._trainingPlan;
+        // Also clear monday briefings older than today
+        Object.keys(appData).filter(k => !k.startsWith('_')).forEach(k => {
+            if (appData[k] && appData[k].mondayBriefing)
+                delete appData[k].mondayBriefing;
+        });
+        lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
+        showDataMsg('✓ Training plan reset — go to Calendar to generate a new one');
+        buildDataScreen();
+    }
+
+    async function clearStaleBriefings() {
+        const appData = getAppData();
+        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        Object.keys(appData).filter(k => !k.startsWith('_') && k < cutoff).forEach(k => {
+            if (appData[k]) {
+                delete appData[k].briefing;
+                delete appData[k].mondayBriefing;
+            }
+        });
+        lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
+        showDataMsg('✓ Old briefings cleared');
+        buildDataScreen();
+    }
+
+    async function fullReset() {
+        if (!confirm('Full reset? This removes your training plan, all briefings and calendar cache. History, goals, profile and Strava data are kept.'))
+            return;
+        const appData = getAppData();
+        // Remove plan and calendar
+        delete appData._trainingPlan;
+        delete appData._calendarLastCheck;
+        delete appData._calendarConflicts;
+        // Remove all briefings
+        Object.keys(appData).filter(k => !k.startsWith('_')).forEach(k => {
+            if (appData[k]) {
+                delete appData[k].briefing;
+                delete appData[k].mondayBriefing;
+            }
+        });
+        lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
+        showDataMsg('✓ Full reset complete — go to Calendar to generate your new plan');
+        buildDataScreen();
+    }
+
     function toggleCalWeek(id) {
         const el = document.getElementById(id);
         if (el)
@@ -8280,7 +8429,6 @@
     }
 
     async function restoreKeysFromIDB() {
-        // Restore keys from IndexedDB to localStorage
         const keys = [SK.apiKey, SK.clientId, SK.stravaToken, SK.accessToken, SK.tokenExpiry, SK.fileId];
         let restored = false;
         for (const k of keys) {
