@@ -717,12 +717,6 @@
         border: 1px solid
     }
 
-    .tag-readiness {
-        color: var(--accent2);
-        border-color: rgba(96, 213, 245, .3);
-        background: rgba(96, 213, 245, .07)
-    }
-
     .tag-training {
         color: var(--accent);
         border-color: rgba(200, 245, 96, .3);
@@ -796,22 +790,6 @@
         margin-top: 3px;
         text-transform: uppercase;
         letter-spacing: .06em
-    }
-
-    .hrv-bar {
-        margin: .75rem 0;
-        background: var(--surface2);
-        border-radius: 4px;
-        height: 6px;
-        overflow: hidden;
-        border: 1px solid var(--border)
-    }
-
-    .hrv-fill {
-        height: 100%;
-        border-radius: 4px;
-        background: var(--accent);
-        transition: width .8s ease
     }
 
     .cached-badge {
@@ -1477,14 +1455,6 @@
         letter-spacing: .06em
     }
 
-    .lift-trend-latest {
-        font-size: 20px;
-        font-weight: 700;
-        font-family: var(--font-mono);
-        color: var(--accent);
-        margin-top: .5rem
-    }
-
     .lift-trend-sub {
         font-size: 10px;
         font-family: var(--font-mono);
@@ -2030,19 +2000,6 @@
         background: rgba(200, 245, 96, .07)
     }
 
-    .plan-option-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 3px
-    }
-
-    .plan-option-sub {
-        font-size: 10px;
-        font-family: var(--font-mono);
-        color: var(--muted)
-    }
-
     .plan-week {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -2559,15 +2516,6 @@
 
     .cal-week-header-current {
         background: rgba(200, 245, 96, .04)
-    }
-
-    .cal-phase-badge {
-        font-size: 9px;
-        font-family: var(--font-mono);
-        padding: 2px 8px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        color: var(--muted)
     }
 
     .settings-link {
@@ -3381,37 +3329,6 @@
         }
     }
 
-    async function loadConfigFromDrive() {
-        try {
-            const token = ls(SK.accessToken);
-            if (!token)
-                return false;
-            const search = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27performance-os-config.json%27&fields=files(id)', {
-                headers: {
-                    Authorization: 'Bearer ' + token
-                }
-            });
-            const searchRes = await search.json();
-            if (!searchRes.files || searchRes.files.length === 0)
-                return false;
-            const fileId = searchRes.files[0].id;
-            const res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
-                headers: {
-                    Authorization: 'Bearer ' + token
-                }
-            });
-            const cfg = await res.json();
-            if (cfg.apiKey)
-                lss(SK.apiKey, cfg.apiKey);
-            if (cfg.clientId)
-                lss(SK.clientId, cfg.clientId);
-            if (cfg.stravaToken)
-                lss(SK.stravaToken, cfg.stravaToken);
-            return !!(cfg.apiKey && cfg.clientId);
-        } catch (e) {
-            return false;
-        }
-    }
 
     function saveSetup() {
         const ak = document.getElementById('api-key-input').value.trim();
@@ -4980,32 +4897,6 @@
         }]));
     }
 
-    function saveMobilitySession() {
-        saveMobility();
-        // Save to appData
-        const appData = getAppData();
-        if (!appData[todayKey])
-            appData[todayKey] = {
-                date: todayKey
-            };
-        const checks = Array.from(document.querySelectorAll('[id^="mob-"]'))
-        .filter(el => el.checked).map(el => el.nextElementSibling.textContent);
-        const note = document.getElementById('mobility-note')?.value || '';
-        appData[todayKey].mobility = {
-            completed: checks,
-            note,
-            date: todayKey
-        };
-        lss(SK.data, JSON.stringify(appData));
-        saveToDrive(appData);
-        const saved = document.getElementById('mobility-saved');
-        if (saved)
-            saved.style.display = 'block';
-        // Count mobility as a session for streak
-        const freshData = getAppData();
-        if (document.getElementById('streak-container'))
-            buildStreakCounter(freshData);
-    }
 
     function buildLogScreenForce() {
         // Clear today's session flag temporarily to allow re-logging
@@ -5343,13 +5234,6 @@
     }
 
     // ── BRZYCKI 1RM FORMULA (more accurate for low reps) ──
-    function brzycki1RM(weight, reps) {
-        if (reps === 1)
-            return weight;
-        if (reps >= 37)
-            return weight; // formula breaks down above 36 reps
-        return Math.round((weight * (36 / (37 - reps))) * 10) / 10;
-    }
 
     // ── CAMERON RACE PREDICTION (better than Riegel for longer distances) ──
     // Uses Pete Riegel with a fatigue factor correction
@@ -5616,24 +5500,22 @@
         } else if (exercises && exercises.length > 0) {
             workoutHtml = '<div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">';
             exercises.forEach(ex => {
-                // Get reps/load from Monday weekPlan first, then daily briefing
+                // Reps/load from daily briefing (reads from _trainingPlan)
                 let targetStr = ex.target;
-                const mondayBriefingData = getAppData()[getThisMonday()];
-                const weekPlanDay = mondayBriefingData && mondayBriefingData.mondayBriefing &&
-                mondayBriefingData.mondayBriefing.weekPlan &&
-                mondayBriefingData.mondayBriefing.weekPlan[day];
-                if (weekPlanDay && weekPlanDay.exercises) {
-                    const wpMatch = weekPlanDay.exercises.find(w =>
-                    w.name && (w.name.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
-                    ex.name.toLowerCase().includes(w.name.split(' ')[0].toLowerCase())));
-                    if (wpMatch) {
+                const dayBriefing = getAppData()[dateKey] && getAppData()[dateKey].briefing &&
+                getAppData()[dateKey].briefing.training && getAppData()[dateKey].briefing.training.workout;
+                if (dayBriefing) {
+                    const bMatch = dayBriefing.find(w =>
+                    w.exercise && (w.exercise.toLowerCase().includes(ex.name.split(' ')[0].toLowerCase()) ||
+                    ex.name.toLowerCase().includes(w.exercise.split(' ')[0].toLowerCase())));
+                    if (bMatch) {
                         const parts = [];
-                        if (wpMatch.sets)
-                            parts.push(wpMatch.sets);
-                        if (wpMatch.reps)
-                            parts.push(wpMatch.reps);
-                        if (wpMatch.load)
-                            parts.push(wpMatch.load);
+                        if (bMatch.sets)
+                            parts.push(bMatch.sets);
+                        if (bMatch.reps)
+                            parts.push(bMatch.reps);
+                        if (bMatch.load)
+                            parts.push(bMatch.load);
                         if (parts.length)
                             targetStr = parts.join(' · ');
                     }
@@ -6844,25 +6726,6 @@
         focus: null,
         weekLevel: 1
     };
-
-    function selectPlanFocus(focus) {
-        PLAN_STATE.focus = focus;
-        document.querySelectorAll('.plan-option-grid').item(0)
-        .querySelectorAll('.plan-option').forEach(el => {
-            el.classList.toggle('selected', el.getAttribute('onclick') === `selectPlanFocus('${focus}')`);
-        });
-        document.getElementById('plan-gen-btn').disabled = false;
-    }
-
-    function selectPlanWeek(level) {
-        PLAN_STATE.weekLevel = level;
-        [1, 2, 3, 4].forEach(i => {
-            const el = document.getElementById('plan-week-' + i);
-            if (el)
-                el.classList.toggle('selected', i === level);
-        });
-    }
-
     const VOLUME_MAP = {
         1: '25-30km',
         2: '30-35km',
@@ -6875,6 +6738,11 @@
         3: '20-24km',
         4: '26-32km'
     };
+
+
+
+
+
 
     async function generateTrainingPlan() {
         const freetext = document.getElementById('plan-freetext')?.value?.trim();
@@ -7740,10 +7608,6 @@
     }
 
     // ── DATA MANAGEMENT ──
-    async function showDataScreen() {
-        switchTab('data');
-        buildDataScreen();
-    }
 
     async function buildDataScreen() {
         const container = document.getElementById('data-management-container');
@@ -8031,8 +7895,9 @@
             rb.style.opacity = '0.6';
         }
         try {
-            // Pull fresh Strava data first, then Drive, then rebuild
-            await refreshStravaBackground();
+            // Fire Strava refresh in background (don't block on it)
+            refreshStravaBackground();
+            // Load Drive data and rebuild
             await loadFromDrive();
             buildDashboard();
         } catch (e) {
@@ -8261,7 +8126,24 @@
         });
         // Note: original title is deliberately NOT stored
 
-        return conflicts;
+        // Sort by start date
+        conflicts.sort((a, b) => a.start.localeCompare(b.start));
+
+        // Merge overlapping conflicts of same type
+        const merged = [];
+        conflicts.forEach(c => {
+            const last = merged[merged.length - 1];
+            if (last && last.type === c.type && c.start <= last.end) {
+                if (c.end > last.end)
+                    last.end = c.end;
+            } else {
+                merged.push({
+                    ...c
+                });
+            }
+        });
+
+        return merged;
     }
 
     async function checkCalendarAndUpdatePlan() {
