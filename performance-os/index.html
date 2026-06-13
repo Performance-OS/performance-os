@@ -3180,11 +3180,18 @@
             top: 0,
             behavior: 'instant'
         });
-        // Hide header on sub-screens (they have back button instead)
         const subScreens = ['goals', 'profile', 'benchmark', 'history', 'data'];
+        const isSub = subScreens.includes(n);
+        // Hide header and remove its space on sub-screens
         const header = document.querySelector('.header');
-        if (header)
-            header.style.display = subScreens.includes(n) ? 'none' : 'flex';
+        if (header) {
+            header.style.display = isSub ? 'none' : 'flex';
+            header.style.marginBottom = isSub ? '0' : '2rem';
+        }
+        // Adjust app padding on sub-screens
+        const app = document.querySelector('.app');
+        if (app)
+            app.style.paddingTop = isSub ? '0' : '1.5rem';
     }
 
     // ── BEDTIME/WAKETIME → SLEEP DURATION ──
