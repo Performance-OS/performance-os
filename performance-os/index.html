@@ -2525,6 +2525,21 @@
             <div id="data-management-container"></div>
         </div>
 
+        <!-- BENCHMARK SCREEN -->
+        <div class="screen" id="screen-benchmark">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:1.5rem">Benchmarks</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Saved times update your goal progress bars automatically</div>
+            <div class="bench-section">
+                <div class="bench-section-title">Running PBs</div>
+                <div id="bench-running"></div>
+            </div>
+            <div class="bench-section">
+                <div class="bench-section-title">Body Metrics</div>
+                <div id="bench-body"></div>
+            </div>
+        </div>
+
         <!-- SETUP -->
         <div class="screen active" id="screen-setup">
             <div class="setup-title">
@@ -3001,111 +3016,112 @@
                     <div id="race-list"></div>
                 </div>
             </div>
-
-            <!-- DATA MANAGEMENT BUTTON -->
-            <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border)">
-                <button onclick="switchTab('data')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-size:12px;font-family:var(--font-mono);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-
-                            Data &amp; Reset
-                          
-                </button>
-            </div>
         </div>
-        <!-- PLAN GENERATOR SCREEN -->
 
-        <!-- SESSION HISTORY SCREEN -->
-        <div class="screen" id="screen-history">
-            <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
-            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
-                Session
-                <br>
-                History
-            </div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
-            <div class="history-filter-row" id="history-filter-row">
-                <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
-            </div>
-            <div id="history-container"></div>
-        </div>
-        <!-- EDITABLE GOALS SCREEN -->
-        <div class="screen" id="screen-goals">
-            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-            <div class="goals-screen-title">Edit Goals</div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Changes update your dashboard tiles automatically</div>
-            <div id="goals-edit-container"></div>
-            <button class="add-goal-btn" onclick="addCustomGoal()">+ Add custom goal</button>
-            <button class="cta-btn" onclick="saveGoals()">Save goals →</button>
-            <div id="goals-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Goals saved</div>
-        </div>
-        <!-- PROFILE SCREEN -->
-        <div class="screen" id="screen-profile">
-            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Profile</div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your details feed into every briefing</div>
+        <!-- DATA MANAGEMENT BUTTON -->
+        <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border)">
+            <button onclick="switchTab('data')" style="width:100%;padding:12px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-size:12px;font-family:var(--font-mono);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
 
-            <div class="profile-section">
-                <div class="profile-section-title">Personal</div>
+                        Data &amp; Reset
+                      
+            </button>
+        </div>
+    </div>
+    <!-- PLAN GENERATOR SCREEN -->
+
+    <!-- SESSION HISTORY SCREEN -->
+    <div class="screen" id="screen-history">
+        <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
+        <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
+            Session
+            <br>
+            History
+        </div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
+        <div class="history-filter-row" id="history-filter-row">
+            <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
+        </div>
+        <div id="history-container"></div>
+    </div>
+    <!-- EDITABLE GOALS SCREEN -->
+    <div class="screen" id="screen-goals">
+        <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+        <div class="goals-screen-title">Edit Goals</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Changes update your dashboard tiles automatically</div>
+        <div id="goals-edit-container"></div>
+        <button class="add-goal-btn" onclick="addCustomGoal()">+ Add custom goal</button>
+        <button class="cta-btn" onclick="saveGoals()">Save goals →</button>
+        <div id="goals-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Goals saved</div>
+    </div>
+    <!-- PROFILE SCREEN -->
+    <div class="screen" id="screen-profile">
+        <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+        <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Profile</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your details feed into every briefing</div>
+
+        <div class="profile-section">
+            <div class="profile-section-title">Personal</div>
+            <div class="profile-field">
+                <div class="profile-label">Name</div>
+                <input class="profile-input" id="prof-name" type="text" placeholder="Alex">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="profile-field">
-                    <div class="profile-label">Name</div>
-                    <input class="profile-input" id="prof-name" type="text" placeholder="Alex">
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <div class="profile-field">
-                        <div class="profile-label">Age</div>
-                        <input class="profile-input" id="prof-age" type="number" placeholder="24">
-                    </div>
-                    <div class="profile-field">
-                        <div class="profile-label">Weight (kg)</div>
-                        <input class="profile-input" id="prof-weight" type="number" placeholder="71.3" step="0.1">
-                    </div>
+                    <div class="profile-label">Age</div>
+                    <input class="profile-input" id="prof-age" type="number" placeholder="24">
                 </div>
                 <div class="profile-field">
-                    <div class="profile-label">Location</div>
-                    <input class="profile-input" id="prof-location" type="text" placeholder="Singapore">
+                    <div class="profile-label">Weight (kg)</div>
+                    <input class="profile-input" id="prof-weight" type="number" placeholder="71.3" step="0.1">
                 </div>
             </div>
-
-            <div class="profile-section">
-                <div class="profile-section-title">Training</div>
-                <div class="profile-field">
-                    <div class="profile-label">Training base / area</div>
-                    <input class="profile-input" id="prof-base" type="text" placeholder="Bedok Reservoir Road">
-                </div>
-                <div class="profile-field">
-                    <div class="profile-label">Occupation</div>
-                    <input class="profile-input" id="prof-job" type="text" placeholder="Desk job Mon-Fri">
-                </div>
+            <div class="profile-field">
+                <div class="profile-label">Location</div>
+                <input class="profile-input" id="prof-location" type="text" placeholder="Singapore">
             </div>
-
-            <div class="profile-section">
-                <div class="profile-section-title">Run Zones (bpm)</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <div class="profile-field">
-                        <div class="profile-label">Z2 Low</div>
-                        <input class="profile-input" id="prof-z2low" type="number" placeholder="132">
-                    </div>
-                    <div class="profile-field">
-                        <div class="profile-label">Z2 High</div>
-                        <input class="profile-input" id="prof-z2high" type="number" placeholder="164">
-                    </div>
-                    <div class="profile-field">
-                        <div class="profile-label">Z3 Low</div>
-                        <input class="profile-input" id="prof-z3low" type="number" placeholder="165">
-                    </div>
-                    <div class="profile-field">
-                        <div class="profile-label">Z4 High</div>
-                        <input class="profile-input" id="prof-z4high" type="number" placeholder="196">
-                    </div>
-                </div>
-            </div>
-
-            <button class="cta-btn" onclick="saveProfile()">Save profile →</button>
-            <div id="profile-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Profile saved — next briefing will use these details</div>
         </div>
+
+        <div class="profile-section">
+            <div class="profile-section-title">Training</div>
+            <div class="profile-field">
+                <div class="profile-label">Training base / area</div>
+                <input class="profile-input" id="prof-base" type="text" placeholder="Bedok Reservoir Road">
+            </div>
+            <div class="profile-field">
+                <div class="profile-label">Occupation</div>
+                <input class="profile-input" id="prof-job" type="text" placeholder="Desk job Mon-Fri">
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <div class="profile-section-title">Run Zones (bpm)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="profile-field">
+                    <div class="profile-label">Z2 Low</div>
+                    <input class="profile-input" id="prof-z2low" type="number" placeholder="132">
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Z2 High</div>
+                    <input class="profile-input" id="prof-z2high" type="number" placeholder="164">
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Z3 Low</div>
+                    <input class="profile-input" id="prof-z3low" type="number" placeholder="165">
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Z4 High</div>
+                    <input class="profile-input" id="prof-z4high" type="number" placeholder="196">
+                </div>
+            </div>
+        </div>
+
+        <button class="cta-btn" onclick="saveProfile()">Save profile →</button>
+        <div id="profile-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Profile saved — next briefing will use these details</div>
+    </div>
     </div>
 
     <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
