@@ -85,7 +85,19 @@
     }
 
     .screen.active {
-        display: block
+        display:block
+    }
+
+    .screen.active.sub-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow-y: auto;
+        background: var(--bg);
+        z-index: 100;
+        padding: 1.5rem 1.25rem 5rem
     }/* SETUP */
     .setup-title {
         font-size: 30px;
@@ -3174,24 +3186,32 @@
         localStorage.setItem(k, v)
     }
     function showScreen(n) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('screen-' + n).classList.add('active');
-        window.scrollTo({
-            top: 0,
-            behavior: 'instant'
-        });
         const subScreens = ['goals', 'profile', 'benchmark', 'history', 'data'];
         const isSub = subScreens.includes(n);
-        // Hide header and remove its space on sub-screens
+        // Remove active and sub-screen from all screens
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('active');
+            s.classList.remove('sub-screen');
+        });
+        const el = document.getElementById('screen-' + n);
+        el.classList.add('active');
+        if (isSub)
+            el.classList.add('sub-screen');
+        // Sub-screens are position:fixed so scroll within them
+        if (isSub)
+            el.scrollTop = 0;
+        else
+            window.scrollTo({
+                top: 0,
+                behavior: 'instant'
+            });
+        // Show/hide header
         const header = document.querySelector('.header');
-        if (header) {
+        if (header)
             header.style.display = isSub ? 'none' : 'flex';
-            header.style.marginBottom = isSub ? '0' : '2rem';
-        }
-        // Adjust app padding on sub-screens
         const app = document.querySelector('.app');
         if (app)
-            app.style.paddingTop = isSub ? '0' : '1.5rem';
+            app.style.paddingTop = isSub ? '1.5rem' : '1.5rem';
     }
 
     // ── BEDTIME/WAKETIME → SLEEP DURATION ──
