@@ -3369,7 +3369,7 @@
             return;
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: cid,
-            scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly',
+            scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
             callback: (resp) => {
                 if (resp.error) {
                     showAuthStatus('Sign in failed: ' + resp.error, 'err');
@@ -3902,6 +3902,19 @@
                 if (ex.sets && ex.sets.length > 0) {
                     dataSection += `- ${ex.name}: ${ex.sets.map(s => s.weight ? s.weight + 'kg x' + s.reps : s.reps + ' reps').join(', ')}\n`;
                 }
+            });
+        }
+
+        // Add recent Strava runs with correct date context
+        const recentRuns = (appData0._latestRuns || []).slice(0, 5);
+        if (recentRuns.length > 0) {
+            dataSection += '\nRECENT STRAVA RUNS:\n';
+            recentRuns.forEach(r => {
+                const daysAgo = Math.round((new Date(todayKey) - new Date(r.date)) / (1000 * 60 * 60 * 24));
+                const label = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago';
+                const pace = r.avg_pace_per_km ? Math.floor(r.avg_pace_per_km) + ':' + (Math.round((r.avg_pace_per_km % 1) * 60) + '').padStart(2, '0') + '/km' : '';
+                const hr = r.avg_hr ? 'avg HR ' + r.avg_hr + 'bpm' : '';
+                dataSection += `- ${label} (${r.date}): ${r.distance_km}km${pace ? ' at ' + pace : ''}${hr ? ', ' + hr : ''}\n`;
             });
         }
 
@@ -7661,6 +7674,12 @@
                 </div>
 
                 <div style="border-top:1px solid var(--border);padding-top:.75rem">
+                  <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:2px">Sync plan to Google Calendar</div>
+                  <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Adds your training sessions to Google Calendar. Updates automatically when plan changes.</div>
+                  <button onclick="syncPlanToCalendar()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--accent);border:1px solid rgba(200,245,96,.3);border-radius:8px;cursor:pointer">Sync to Calendar →</button>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:.75rem">
                   <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:2px">Full reset</div>
                   <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Removes training plan, calendar cache, and all briefings. Keeps history, goals, profile, benchmarks, Strava data.</div>
                   <button onclick="fullReset()" style="font-size:11px;font-family:var(--font-mono);padding:8px 16px;background:transparent;color:var(--danger);border:1px solid rgba(245,96,96,.3);border-radius:8px;cursor:pointer">Full reset</button>
@@ -7723,6 +7742,16 @@
         await saveToDrive(appData);
         showDataMsg('✓ Old briefings cleared');
         buildDataScreen();
+    }
+
+    async function syncPlanToCalendar() {
+        showDataMsg('Syncing to Google Calendar...', 'var(--muted2)');
+        const count = await writeTrainingPlanToCalendar();
+        if (count > 0) {
+            showDataMsg('✓ ' + count + ' training sessions added to Google Calendar');
+        } else {
+            showDataMsg('No sessions to sync — generate a training plan first', 'var(--warn)');
+        }
     }
 
     async function fullReset() {
@@ -7868,14 +7897,16 @@
                 };
                 lss(SK.data, JSON.stringify(appData));
                 saveToDrive(appData);
-                response.innerHTML += `<div style="margin-top:.5rem;font-size:10px;font-family:var(--font-mono);color:var(--success)">✓ Plan updated — calendar and dashboard refreshed</div>`;
-                // Rebuild calendar, dashboard and week grid
-                setTimeout(() => {
+                response.innerHTML += `<div style="margin-top:.5rem;font-size:10px;font-family:var(--font-mono);color:var(--success)">✓ Plan updated — syncing to Google Calendar...</div>`;
+                setTimeout(async () => {
                     buildCalendarScreen();
                     buildDashboard();
                     const wg = document.getElementById('week-grid');
                     if (wg)
                         buildWeekGrid(getAppData());
+                    const count = await writeTrainingPlanToCalendar();
+                    if (count > 0)
+                        response.innerHTML += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--success)">✓ \${count} sessions added to Google Calendar</div>`;
                 }, 500);
             }
 
@@ -8000,6 +8031,12 @@
         };
 
         function classify(title, ev) {
+            // Ignore events we created — they start with our prefix
+            if (title.startsWith(TRAINING_EVENT_PREFIX) ||
+            title.startsWith('🏋️') ||
+            (ev.extendedProperties && ev.extendedProperties.private && ev.extendedProperties.private.performanceOS)) {
+                return null;
+            }
             const t = title.toLowerCase();
             const isAllDay = !!ev.start?.date;
             const startTime = ev.start?.dateTime;
@@ -8373,6 +8410,147 @@
             console.log('Keychain restore failed:', e);
             return false;
         }
+    }
+
+    // ── WRITE TRAINING SESSIONS TO GOOGLE CALENDAR ──
+    const TRAINING_EVENT_PREFIX = '🏋️ '; // Prefix identifies our events so reader ignores them
+
+    async function writeTrainingPlanToCalendar() {
+        const token = ls(SK.accessToken);
+        const expiry = parseInt(ls(SK.tokenExpiry) || '0');
+        if (!token || Date.now() > expiry - 60000) {
+            console.log('Calendar write: no valid token');
+            return;
+        }
+
+        const appData = getAppData();
+        const plan = appData._trainingPlan;
+        if (!plan || !plan.plan || !plan.plan.weeks) {
+            console.log('Calendar write: no training plan');
+            return;
+        }
+
+        // First delete any existing training events we created (to avoid duplicates)
+        await deleteOurCalendarEvents();
+
+        // Create events for next 8 weeks
+        const dayMap = {
+            Mon: 1,
+            Tue: 2,
+            Wed: 3,
+            Thu: 4,
+            Fri: 5,
+            Sat: 6,
+            Sun: 0
+        };
+        const createdEvents = [];
+
+        for (let w = 0; w < plan.plan.weeks.length; w++) {
+            const week = plan.plan.weeks[w];
+            if (!week || !week.days)
+                continue;
+
+            // Calculate Monday of this week
+            const monday = new Date(getThisMonday());
+            monday.setDate(monday.getDate() + (w * 7));
+
+            for (const [dayKey, session] of Object.entries(week.days)) {
+                if (!session || session === 'Rest' || session.toLowerCase().includes('rest'))
+                    continue;
+
+                const dayOffset = dayMap[dayKey];
+                if (dayOffset === undefined)
+                    continue;
+
+                const eventDate = new Date(monday);
+                // Calculate correct day offset from Monday
+                const mondayDay = 1; // Monday=1
+                const targetDay = dayOffset === 0 ? 7 : dayOffset; // Sun=7
+                eventDate.setDate(monday.getDate() + (targetDay - mondayDay));
+
+                const dateStr = eventDate.toISOString().split('T')[0];
+
+                // Set time based on session type
+                let startTime = '07:00',
+                    endTime = '08:00';
+                if (session.toLowerCase().includes('run') && !session.toLowerCase().includes('long')) {
+                    startTime = '06:00';
+                    endTime = '07:00';
+                } else if (session.toLowerCase().includes('long run')) {
+                    startTime = '06:00';
+                    endTime = '08:30';
+                } else if (session.toLowerCase().includes('yoga') || session.toLowerCase().includes('mobility')) {
+                    startTime = '08:00';
+                    endTime = '09:00';
+                }
+
+                const event = {
+                    summary: TRAINING_EVENT_PREFIX + session.slice(0, 50),
+                    // Prefix so reader ignores it
+                    description: 'Performance OS training session. ' + session,
+                    start: {
+                        dateTime: dateStr + 'T' + startTime + ':00',
+                        timeZone: 'Asia/Singapore'
+                    },
+                    end: {
+                        dateTime: dateStr + 'T' + endTime + ':00',
+                        timeZone: 'Asia/Singapore'
+                    },
+                    colorId: '2',
+                    // Sage green
+                    extendedProperties: {
+                        private: {
+                            performanceOS: 'true',
+                            weekNum: String(w + 1)
+                        }
+                    }
+                };
+
+                try {
+                    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: 'Bearer ' + token,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(event)
+                    });
+                    if (res.ok) {
+                        const created = await res.json();
+                        createdEvents.push(created.id);
+                    }
+                } catch (e) {
+                    console.log('Failed to create event:', e);
+                }
+            }
+        }
+
+        // Save created event IDs so we can delete them later
+        appData._calendarEventIds = createdEvents;
+        lss(SK.data, JSON.stringify(appData));
+        saveToDrive(appData);
+        console.log('Created', createdEvents.length, 'calendar events');
+        return createdEvents.length;
+    }
+
+    async function deleteOurCalendarEvents() {
+        const token = ls(SK.accessToken);
+        if (!token)
+            return;
+        const appData = getAppData();
+        const eventIds = appData._calendarEventIds || [];
+        for (const id of eventIds) {
+            try {
+                await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id, {
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: 'Bearer ' + token
+                    }
+                });
+            } catch (e) {}
+        }
+        appData._calendarEventIds = [];
+        lss(SK.data, JSON.stringify(appData));
     }
 
     // ── INIT ──
