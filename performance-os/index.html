@@ -87,17 +87,6 @@
     .screen.active {
         display:block
     }
-    .screen.active.sub-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        overflow-y: auto;
-        background: var(--bg);
-        z-index: 99;
-        padding: 1.5rem 1.25rem 5rem;
-    }
 
     .screen.active.sub-screen {
         position: fixed;
@@ -3150,7 +3139,6 @@
 
     <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
 
-    <script src="nutrition.js"></script>
     <script>
     const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const now = new Date();
@@ -3206,10 +3194,20 @@
         });
         const el = document.getElementById('screen-' + n);
         el.classList.add('active');
-        if (isSub) { el.classList.add('sub-screen'); el.scrollTop = 0; }
-        else window.scrollTo({top: 0, behavior: 'instant'});
+        if (isSub)
+            el.classList.add('sub-screen');
+        if (isSub)
+            el.scrollTop = 0;
+        else
+            window.scrollTo({
+                top: 0,
+                behavior: 'instant'
+            });
+        // Hide header on sub-screens only
         const header = document.querySelector('.header');
-        if (header) header.style.display = isSub ? 'none' : 'flex';
+        if (header)
+            header.style.display = isSub ? 'none' : 'flex';
+
     }
 
     // ── BEDTIME/WAKETIME → SLEEP DURATION ──
@@ -3295,6 +3293,7 @@
             console.log('Config save error:', e);
         }
     }
+
 
     function saveSetup() {
         const ak = document.getElementById('api-key-input').value.trim();
@@ -4839,6 +4838,7 @@
         } catch (e) {}
     }
 
+
     function saveDailyMobility(checked) {
         const appData = getAppData();
         if (!appData[todayKey])
@@ -4876,6 +4876,7 @@
             note
         }]));
     }
+
 
     function buildLogScreenForce() {
         // Clear today's session flag temporarily to allow re-logging
@@ -4936,6 +4937,7 @@
         }
         return null;
     }
+
 
     function restoreLiftCache() {
         try {
@@ -5219,6 +5221,7 @@
         // Riegel (1977) — validated gold standard formula, exponent 1.06
         return Math.round(knownSecs * Math.pow(targetDist / knownDist, 1.06));
     }
+
 
     function buildGoals(appData) {
         let GOALS = getGoals();
@@ -6713,6 +6716,12 @@
         4: '26-32km'
     };
 
+
+
+
+
+
+
     function renderTrainingPlan(plan) {
         const container = document.getElementById('plan-weeks-container');
         const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Sat', 'Sun'];
@@ -7672,13 +7681,43 @@
 
         Respond as a coach would — acknowledge what they want, explain what you're adjusting and why, then provide the updated plan.
 
-        CRITICAL: Respond ONLY with valid compact JSON. No markdown, no backticks.
-Keep ALL string values SHORT (under 80 chars). Use abbreviations like "4x5@80%".
+        Respond ONLY as JSON, no markdown, no backticks:
+        {
+          "coachResponse": "2-3 sentences acknowledging the request and explaining what you changed",
+          "planUpdated": true or false,
+          "updatedPlan": {
+            "blockTitle": "title",
+            "blockGoal": "goal",
+            "coachNote": "updated coaching note",
+            "weeks": [
+              {
+                "weekNum": 1,
+                "theme": "theme",
+                "totalKm": "Xkm",
+                "keyFocus": "focus",
+                "days": {
+                  "Mon": "Push session — bench focus with specific loads",
+                  "Tue": "Zone 2 run — specific distance and HR",
+                  "Wed": "Pull session — muscle up progression",
+                  "Thu": "Interval run — specific structure",
+                  "Fri": "Rest / active recovery",
+                  "Sat": "Long run + legs session — specific details",
+                  "Sun": "Yoga + mobility 30-45 min"
+                }
+              }
+            ]
 
-{"coachResponse":"1-2 sentences","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":"Push: bench 4x5@80%, OHP 3x8, incline 3x10, laterals, dips","Tue":"Z2 run 6km <148bpm pre-7am","Wed":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8, face pulls","Thu":"Intervals 6x(30s hard/90s easy) pre-7am","Fri":"Rest","Sat":"Parkrun 5K tempo","Sun":"Long run 11km Z2 + yoga 30min"}}]}}
+        CRITICAL RULES FOR PLAN UPDATES:
+        - Generate ALL 8 weeks, not just 4
+        - Include ALL days including gym sessions — never remove Mon Push, Wed Pull, Sat Legs
+        - Only ADD or MODIFY specific sessions the athlete requested
+        - Keep the base Push/Pull/Legs structure intact always
+        - If athlete asks to add a race/parkrun on Saturday, add it to Sat alongside or instead of long run — keep legs session
+        - Preserve volume progression (10% weekly increase)
+          }
+        }
 
-RULES: All weeks included, Mon Push/Wed Pull/Sat Parkrun/Sun Long run, 10% weekly volume.
-If no plan change needed: planUpdated=false, updatedPlan=null.`;
+        If no plan change is needed (e.g. just answering a question), set planUpdated to false and updatedPlan to null.`;
 
         try {
             const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -7691,7 +7730,7 @@ If no plan change needed: planUpdated=false, updatedPlan=null.`;
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-5',
-                    max_tokens: 6000,
+                    max_tokens: 2000,
                     messages: [{
                         role: 'user',
                         content: prompt
@@ -8482,6 +8521,5 @@ If no plan change needed: planUpdated=false, updatedPlan=null.`;
     }
     window.addEventListener('load', init);
     </script>
-    <script src="nutrition.js"></script>
 </body>
 </html>
