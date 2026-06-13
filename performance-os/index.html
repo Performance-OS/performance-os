@@ -8031,15 +8031,13 @@
             rb.style.opacity = '0.6';
         }
         try {
-            const fresh = await loadFromDrive();
-            if (fresh)
-                lss(SK.data, JSON.stringify(fresh));
-            const activeBtn = document.querySelector('.tab-btn.active');
-            if (activeBtn) {
-                const tab = activeBtn.id.replace('tab-', '');
-                switchTab(tab);
-            }
-        } catch (e) {}
+            // Pull fresh Strava data first, then Drive, then rebuild
+            await refreshStravaBackground();
+            await loadFromDrive();
+            buildDashboard();
+        } catch (e) {
+            console.log('Refresh failed:', e);
+        }
         if (rb) {
             rb.textContent = '↺ refresh';
             rb.style.opacity = '1';
