@@ -1967,39 +1967,6 @@
         background: rgba(245, 166, 35, .08);
         color: var(--warn)
     }/* PLAN GENERATOR */
-    .plan-screen-title {
-        font-size: 26px;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: .25rem
-    }
-
-    .plan-option-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 1.5rem
-    }
-
-    .plan-option {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--r);
-        padding: 1rem;
-        cursor: pointer;
-        transition: all .15s;
-        text-align: left
-    }
-
-    .plan-option:hover {
-        border-color: var(--muted2)
-    }
-
-    .plan-option.selected {
-        border-color: rgba(200, 245, 96, .5);
-        background: rgba(200, 245, 96, .07)
-    }
-
     .plan-week {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -3066,41 +3033,7 @@
             </div>
         </div>
         <!-- PLAN GENERATOR SCREEN -->
-        <div class="screen" id="screen-plan">
-            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-            <div class="plan-screen-title">
-                Training
-                <br>
-                Plan
-            </div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Generate a personalised 4-week block</div>
 
-            <div id="plan-setup">
-                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1rem">
-                    <div style="font-size:13px;color:var(--muted2);font-family:var(--font-mono);line-height:1.7;margin-bottom:.75rem">Describe what you want to achieve and your timeline. Be as specific as you like — current fitness, target race, how much time you have, any constraints.</div>
-                    <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem">Example: "I want to run sub-19 5K in 8 weeks. Currently running 20-25km/week, bench is at 80kg. I have a parkrun on 14th July as a test."</div>
-                </div>
-                <textarea id="plan-freetext" placeholder="Describe your goals and timeline..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;resize:none;height:140px;line-height:1.6;transition:border-color .15s" onfocus="this.style.borderColor='rgba(200,245,96,.4)'" onblur="this.style.borderColor='var(--border)'"></textarea>
-                <button class="cta-btn" id="plan-gen-btn" onclick="generateTrainingPlan()" style="margin-top:.75rem">Generate my plan →</button>
-            </div>
-
-            <div id="plan-loading" style="display:none" class="loading-state">
-                <div class="loading-dots">
-                    <div class="dot"></div>
-                    <div class="dot"></div>
-                    <div class="dot"></div>
-                </div>
-                <div class="loading-label">Building your 4-week plan...</div>
-            </div>
-
-            <div id="plan-result" style="display:none">
-                <div class="dash-section-label" style="margin-top:.5rem">Your 4-week block</div>
-                <div id="plan-weeks-container"></div>
-                <button class="plan-save-btn" onclick="savePlan()">Save this plan →</button>
-                <div id="plan-saved-msg" style="display:none" class="plan-saved-badge">✓ Plan saved — your Monday briefings will now reference this block</div>
-                <button class="cta-btn" style="background:transparent;color:var(--muted2);border:1px solid var(--border);margin-top:.5rem;font-size:13px" onclick="document.getElementById('plan-result').style.display='none';document.getElementById('plan-setup').style.display='block'">← Generate a different plan</button>
-            </div>
-        </div>
         <!-- SESSION HISTORY SCREEN -->
         <div class="screen" id="screen-history">
             <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
@@ -4210,8 +4143,6 @@
         } else if (tab === 'benchmark') {
             buildBenchmarkScreen();
             showScreen('benchmark');
-        } else if (tab === 'plan') {
-            showScreen('plan');
         } else if (tab === 'history') {
             showScreen('history');
         } else if (tab === 'goals') {
@@ -6735,10 +6666,7 @@
     }
 
     // ── TRAINING PLAN GENERATOR ──
-    const PLAN_STATE = {
-        focus: null,
-        weekLevel: 1
-    };
+
     const VOLUME_MAP = {
         1: '25-30km',
         2: '30-35km',
@@ -6757,112 +6685,6 @@
 
 
 
-    async function generateTrainingPlan() {
-        const freetext = document.getElementById('plan-freetext')?.value?.trim();
-        if (!freetext) {
-            alert('Please describe your goals first');
-            return;
-        }
-        document.getElementById('plan-setup').style.display = 'none';
-        document.getElementById('plan-loading').style.display = 'block';
-        document.getElementById('plan-result').style.display = 'none';
-
-        const appData = getAppData();
-        const latestRuns = appData._latestRuns || [];
-        const recentVolume = latestRuns.slice(0, 5).reduce((s, r) => s + r.distance_km, 0);
-        const benchHistory = [];
-        Object.keys(appData).filter(k => !k.startsWith('_')).sort().reverse().slice(0, 8).forEach(k => {
-            const e = appData[k];
-            if (e && e.session && e.session.exercises && e.session.exercises.bench) {
-                const sets = e.session.exercises.bench.sets || [];
-                const best = Math.max(...sets.filter(s => s.weight).map(s => s.weight), 0);
-                if (best > 0)
-                    benchHistory.push(best);
-            }
-        });
-        const currentBench = benchHistory.length > 0 ? Math.max(...benchHistory) : null;
-
-        const focusLabels = {
-            '5k': 'Sub-19min 5K speed development',
-            'hm': 'Half marathon base building toward sub-1:30',
-            'bench': 'Bench press strength toward 100kg',
-            'muscleup': 'Muscle up skill and strength development',
-            'balanced': 'Balanced development across all goals',
-            'recovery': 'Recovery/deload block'
-        };
-
-        const profile = getProfile();
-        const prompt = `You are ${profile.name}'s performance coach. Generate a personalised 4-week training block based on their specific request.
-
-        ATHLETE PROFILE:
-        - Age: 24, Singapore (heat/humidity always a factor)
-        - Goals: Sub-19 5K (current 19:35), 100kg bench (current ~${currentBench || 88}kg), muscle ups (10-15 pull ups), sub-1:30 HM, sub-3:30 marathon
-        - Weekly structure: Mon Push, Tue Z2 run, Wed Pull, Thu Intervals, Fri Rest, Sat Long run + Legs, Sun Yoga
-        - Run zones: Z2=132-164bpm (easy 132-148), Z3=165-180, Z4=181-196
-        - Current weekly volume: ~${Math.round(recentVolume)}km from last 5 runs
-        - Starting volume level: ${VOLUME_MAP[PLAN_STATE.weekLevel]} per week
-        - Long run target: ${LONG_RUN_MAP[PLAN_STATE.weekLevel]}
-
-        ATHLETE REQUEST: ${freetext}
-
-        Generate a structured 4-week progressive block. Each week should build on the last with clear progression. Week 4 can be a slight deload before the next block.
-
-        IMPORTANT: Tailor the plan specifically to the athlete's request. If they only mention running goals, only include run sessions — no gym work unless they specifically ask. If they mention strength goals, include lift sessions. Match the plan to what they actually asked for.
-
-        Respond ONLY as JSON, no markdown, no backticks:
-        {
-          "blockTitle": "short name for this training block",
-          "blockGoal": "one sentence — what this block achieves",
-          "weeks": [
-            {
-              "weekNum": 1,
-              "theme": "short week theme e.g. Base Building",
-              "totalKm": "e.g. 26km",
-              "days": {
-                "Mon": "specific push session with key loads/targets",
-                "Tue": "specific run — distance, HR zone, any structure",
-                "Wed": "specific pull session with key targets",
-                "Thu": "specific run — distance, HR zone, structure",
-                "Sat": "long run distance + HR target, then legs key focus",
-                "Sun": "yoga focus areas for this week"
-              },
-              "keyFocus": "one sentence — the most important thing about this week"
-            }
-          ],
-          "coachNote": "2-3 sentences of overall coaching advice for this block — what to watch for, what success looks like"
-        }`;
-
-        try {
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': ls(SK.apiKey),
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-5',
-                    max_tokens: 2000,
-                    messages: [{
-                        role: 'user',
-                        content: prompt
-                    }]
-                })
-            });
-            if (!res.ok)
-                throw new Error('API error ' + res.status);
-            const data = await res.json();
-            const raw = data.content[0].text.replace(/```json|```/g, '').trim();
-            const plan = JSON.parse(raw);
-            document.getElementById('plan-loading').style.display = 'none';
-            renderTrainingPlan(plan);
-        } catch (e) {
-            document.getElementById('plan-loading').style.display = 'none';
-            document.getElementById('plan-setup').style.display = 'block';
-            alert('Error generating plan: ' + e.message);
-        }
-    }
 
     function renderTrainingPlan(plan) {
         const container = document.getElementById('plan-weeks-container');
