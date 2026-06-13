@@ -81,14 +81,11 @@
     }
 
     .screen {
-        display: none;
-        min-height: 100%;
-        overflow:hidden
+        display:none
     }
 
     .screen.active {
-        display: block;
-        min-height: 100%
+        display: block
     }/* SETUP */
     .setup-title {
         font-size: 30px;
@@ -2945,7 +2942,7 @@
             <div id="hrv-container"></div>
 
             <!-- PROFILE BUTTON -->
-            <div style="margin-top:.75rem;margin-bottom:.75rem">
+            <div style="margin-top:.75rem">
                 <button onclick="buildProfileScreen();switchTab('profile')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
                     <div style="display:flex;align-items:center;gap:10px">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2959,7 +2956,7 @@
             </div>
 
             <!-- GOALS EDIT BUTTON -->
-            <div style="margin-top:.75rem;margin-bottom:.75rem">
+            <div style="margin-top:.75rem">
                 <button onclick="buildGoalsEditor();switchTab('goals')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
                     <div style="display:flex;align-items:center;gap:10px">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2973,7 +2970,7 @@
             </div>
 
             <!-- BENCHMARK BUTTON -->
-            <div style="margin-top:1.5rem;margin-bottom:.75rem">
+            <div style="margin-top:.75rem">
                 <button onclick="buildBenchmarkScreen();showScreen('benchmark')" style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:14px;font-weight:600;font-family:var(--font-display);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s" onmouseover="this.style.borderColor='var(--muted2)'" onmouseout="this.style.borderColor='var(--border)'">
                     <div style="display:flex;align-items:center;gap:10px">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2995,137 +2992,134 @@
                             <span style="color:var(--muted);font-size:12px">manage →</span>
                         </button>
                     </div>
-                    <span style="color:var(--muted);font-size:12px">log official times →</span>
-                </button>
+
             </div>
+            <!-- RACE MODAL -->
+            <div class="modal-overlay" id="race-modal">
+                <div class="modal-sheet">
+                    <div class="modal-title" id="race-modal-title">Add Race</div>
+                    <div class="modal-field">
+                        <div class="modal-label">Race Name</div>
+                        <input class="modal-input" id="race-name-input" type="text" placeholder="e.g. Singapore Marathon">
+                    </div>
+                    <div class="modal-field">
+                        <div class="modal-label">Distance</div>
+                        <select class="modal-select" id="race-dist-input">
+                            <option value="5K">5K</option>
+                            <option value="10K">10K</option>
+                            <option value="Half Marathon">Half Marathon</option>
+                            <option value="Marathon">Marathon</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <div class="modal-label">Race Date</div>
+                        <input class="modal-input" id="race-date-input" type="date">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-cancel" onclick="closeRaceModal()">Cancel</button>
+                        <button class="modal-save" onclick="saveRace()">Save Race</button>
+                    </div>
 
-        </div>
-        <!-- RACE MODAL -->
-        <div class="modal-overlay" id="race-modal">
-            <div class="modal-sheet">
-                <div class="modal-title" id="race-modal-title">Add Race</div>
-                <div class="modal-field">
-                    <div class="modal-label">Race Name</div>
-                    <input class="modal-input" id="race-name-input" type="text" placeholder="e.g. Singapore Marathon">
-                </div>
-                <div class="modal-field">
-                    <div class="modal-label">Distance</div>
-                    <select class="modal-select" id="race-dist-input">
-                        <option value="5K">5K</option>
-                        <option value="10K">10K</option>
-                        <option value="Half Marathon">Half Marathon</option>
-                        <option value="Marathon">Marathon</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="modal-field">
-                    <div class="modal-label">Race Date</div>
-                    <input class="modal-input" id="race-date-input" type="date">
-                </div>
-                <div class="modal-actions">
-                    <button class="modal-cancel" onclick="closeRaceModal()">Cancel</button>
-                    <button class="modal-save" onclick="saveRace()">Save Race</button>
-                </div>
-
-                <!-- Existing races list -->
-                <div id="race-list-section" style="margin-top:1.25rem;display:none">
-                    <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Your Races</div>
-                    <div id="race-list"></div>
+                    <!-- Existing races list -->
+                    <div id="race-list-section" style="margin-top:1.25rem;display:none">
+                        <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Your Races</div>
+                        <div id="race-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- PLAN GENERATOR SCREEN -->
+        <!-- PLAN GENERATOR SCREEN -->
 
-    <!-- SESSION HISTORY SCREEN -->
-    <div class="screen" id="screen-history">
-        <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
-        <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
-            Session
-            <br>
-            History
-        </div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
-        <div class="history-filter-row" id="history-filter-row">
-            <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
-        </div>
-        <div id="history-container"></div>
-    </div>
-    <!-- EDITABLE GOALS SCREEN -->
-    <div class="screen" id="screen-goals">
-        <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-        <div class="goals-screen-title">Edit Goals</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Changes update your dashboard tiles automatically</div>
-        <div id="goals-edit-container"></div>
-        <button class="add-goal-btn" onclick="addCustomGoal()">+ Add custom goal</button>
-        <button class="cta-btn" onclick="saveGoals()">Save goals →</button>
-        <div id="goals-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Goals saved</div>
-    </div>
-    <!-- PROFILE SCREEN -->
-    <div class="screen" id="screen-profile">
-        <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
-        <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Profile</div>
-        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your details feed into every briefing</div>
-
-        <div class="profile-section">
-            <div class="profile-section-title">Personal</div>
-            <div class="profile-field">
-                <div class="profile-label">Name</div>
-                <input class="profile-input" id="prof-name" type="text" placeholder="Alex">
+        <!-- SESSION HISTORY SCREEN -->
+        <div class="screen" id="screen-history">
+            <button class="back-btn" onclick="switchTab('log')">← back to logger</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">
+                Session
+                <br>
+                History
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">All logged sessions</div>
+            <div class="history-filter-row" id="history-filter-row">
+                <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
+            </div>
+            <div id="history-container"></div>
+        </div>
+        <!-- EDITABLE GOALS SCREEN -->
+        <div class="screen" id="screen-goals">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div class="goals-screen-title">Edit Goals</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Changes update your dashboard tiles automatically</div>
+            <div id="goals-edit-container"></div>
+            <button class="add-goal-btn" onclick="addCustomGoal()">+ Add custom goal</button>
+            <button class="cta-btn" onclick="saveGoals()">Save goals →</button>
+            <div id="goals-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Goals saved</div>
+        </div>
+        <!-- PROFILE SCREEN -->
+        <div class="screen" id="screen-profile">
+            <button class="back-btn" onclick="switchTab('dashboard')">← back to dashboard</button>
+            <div style="font-size:26px;font-weight:800;margin-bottom:.25rem">Profile</div>
+            <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-bottom:1.5rem">Your details feed into every briefing</div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Personal</div>
                 <div class="profile-field">
-                    <div class="profile-label">Age</div>
-                    <input class="profile-input" id="prof-age" type="number" placeholder="24">
+                    <div class="profile-label">Name</div>
+                    <input class="profile-input" id="prof-name" type="text" placeholder="Alex">
                 </div>
-                <div class="profile-field">
-                    <div class="profile-label">Weight (kg)</div>
-                    <input class="profile-input" id="prof-weight" type="number" placeholder="71.3" step="0.1">
-                </div>
-            </div>
-            <div class="profile-field">
-                <div class="profile-label">Location</div>
-                <input class="profile-input" id="prof-location" type="text" placeholder="Singapore">
-            </div>
-        </div>
-
-        <div class="profile-section">
-            <div class="profile-section-title">Training</div>
-            <div class="profile-field">
-                <div class="profile-label">Training base / area</div>
-                <input class="profile-input" id="prof-base" type="text" placeholder="Bedok Reservoir Road">
-            </div>
-            <div class="profile-field">
-                <div class="profile-label">Occupation</div>
-                <input class="profile-input" id="prof-job" type="text" placeholder="Desk job Mon-Fri">
-            </div>
-        </div>
-
-        <div class="profile-section">
-            <div class="profile-section-title">Run Zones (bpm)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="profile-field">
-                    <div class="profile-label">Z2 Low</div>
-                    <input class="profile-input" id="prof-z2low" type="number" placeholder="132">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="profile-field">
+                        <div class="profile-label">Age</div>
+                        <input class="profile-input" id="prof-age" type="number" placeholder="24">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Weight (kg)</div>
+                        <input class="profile-input" id="prof-weight" type="number" placeholder="71.3" step="0.1">
+                    </div>
                 </div>
                 <div class="profile-field">
-                    <div class="profile-label">Z2 High</div>
-                    <input class="profile-input" id="prof-z2high" type="number" placeholder="164">
-                </div>
-                <div class="profile-field">
-                    <div class="profile-label">Z3 Low</div>
-                    <input class="profile-input" id="prof-z3low" type="number" placeholder="165">
-                </div>
-                <div class="profile-field">
-                    <div class="profile-label">Z4 High</div>
-                    <input class="profile-input" id="prof-z4high" type="number" placeholder="196">
+                    <div class="profile-label">Location</div>
+                    <input class="profile-input" id="prof-location" type="text" placeholder="Singapore">
                 </div>
             </div>
-        </div>
 
-        <button class="cta-btn" onclick="saveProfile()">Save profile →</button>
-        <div id="profile-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Profile saved — next briefing will use these details</div>
-    </div>
+            <div class="profile-section">
+                <div class="profile-section-title">Training</div>
+                <div class="profile-field">
+                    <div class="profile-label">Training base / area</div>
+                    <input class="profile-input" id="prof-base" type="text" placeholder="Bedok Reservoir Road">
+                </div>
+                <div class="profile-field">
+                    <div class="profile-label">Occupation</div>
+                    <input class="profile-input" id="prof-job" type="text" placeholder="Desk job Mon-Fri">
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <div class="profile-section-title">Run Zones (bpm)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <div class="profile-field">
+                        <div class="profile-label">Z2 Low</div>
+                        <input class="profile-input" id="prof-z2low" type="number" placeholder="132">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z2 High</div>
+                        <input class="profile-input" id="prof-z2high" type="number" placeholder="164">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z3 Low</div>
+                        <input class="profile-input" id="prof-z3low" type="number" placeholder="165">
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Z4 High</div>
+                        <input class="profile-input" id="prof-z4high" type="number" placeholder="196">
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-btn" onclick="saveProfile()">Save profile →</button>
+            <div id="profile-saved-msg" style="display:none;text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--success);margin-top:.75rem">✓ Profile saved — next briefing will use these details</div>
+        </div>
     </div>
 
     <button class="settings-link" onclick="showSettings()" title="Settings">⚙</button>
@@ -3179,6 +3173,10 @@
     function showScreen(n) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-' + n).classList.add('active');
+        window.scrollTo({
+            top: 0,
+            behavior: 'instant'
+        });
     }
 
     // ── BEDTIME/WAKETIME → SLEEP DURATION ──
@@ -4096,6 +4094,10 @@
     }
 
     function switchTab(tab) {
+        window.scrollTo({
+            top: 0,
+            behavior: "instant"
+        });
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         const activeTab = document.getElementById('tab-' + tab);
         if (activeTab)
