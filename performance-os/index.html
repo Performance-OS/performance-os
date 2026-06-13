@@ -96,7 +96,7 @@
         bottom: 0;
         overflow-y: auto;
         background: var(--bg);
-        z-index: 100;
+        z-index: 99;
         padding: 1.5rem 1.25rem 5rem
     }/* SETUP */
     .setup-title {
@@ -856,7 +856,7 @@
         border-top: 1px solid var(--border);
         display: flex;
         align-items: stretch;
-        z-index: 100;
+        z-index: 200;
         max-width: 480px;
         margin: 0 auto;
         padding-bottom: env(safe-area-inset-bottom);
@@ -3188,7 +3188,6 @@
     function showScreen(n) {
         const subScreens = ['goals', 'profile', 'benchmark', 'history', 'data'];
         const isSub = subScreens.includes(n);
-        // Remove active and sub-screen from all screens
         document.querySelectorAll('.screen').forEach(s => {
             s.classList.remove('active');
             s.classList.remove('sub-screen');
@@ -3197,7 +3196,6 @@
         el.classList.add('active');
         if (isSub)
             el.classList.add('sub-screen');
-        // Sub-screens are position:fixed so scroll within them
         if (isSub)
             el.scrollTop = 0;
         else
@@ -3205,13 +3203,11 @@
                 top: 0,
                 behavior: 'instant'
             });
-        // Show/hide header
+        // Hide header on sub-screens only
         const header = document.querySelector('.header');
         if (header)
             header.style.display = isSub ? 'none' : 'flex';
-        const app = document.querySelector('.app');
-        if (app)
-            app.style.paddingTop = isSub ? '1.5rem' : '1.5rem';
+
     }
 
     // ── BEDTIME/WAKETIME → SLEEP DURATION ──
