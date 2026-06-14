@@ -8333,16 +8333,26 @@
 
         let deleted = 0;
 
-        // Step 1: Delete by stored IDs (fast path)
+        // Step 1: Clear stored IDs immediately — they may be stale
+        // Don't loop through hundreds of dead IDs
         const eventIds = appData._calendarEventIds || [];
-        for (const id of eventIds) {
-            try {
-                const res = await fetch(
-                    'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id,
-                    { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
-                );
-                if (res.ok || res.status === 404 || res.status === 410) deleted++;
-            } catch (e) {}
+        if (eventIds.length > 0) {
+            // Only try if we have a small number (fresh sync) — skip if stale
+            if (eventIds.length <= 200) {
+                await Promise.all(eventIds.map(async id => {
+                    try {
+                        const res = await fetch(
+                            'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id,
+                            { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
+                        );
+                        if (res.ok || res.status === 404 || res.status === 410) deleted++;
+                    } catch (e) {}
+                }));
+            }
+            // Clear immediately regardless
+            appData._calendarEventIds = [];
+            lss(SK.data, JSON.stringify(appData));
+            await saveToDrive(appData);
         }
 
         // Step 2: Tag-based sweep — catches any orphaned events
@@ -8404,9 +8414,21 @@
 
         // Session time defaults by type (SGT / local time)
         function getSessionTimes(session) {
-            // Times come from Claude's plan JSON — no hardcoded fallbacks
-            // If no time is set in the plan, event will be created as all-day
-            return null;
+            // Fallback only — used when Claude's plan has no time field
+            // Claude's time field always takes priority over these
+            const s = session.toLowerCase();
+            if (s.includes('parkrun')) return { start: '07:00', durationHours: 1 };
+            if (s.includes('long run')) return { start: '06:00', durationHours: 2.5 };
+            if (s.includes('interval') || (s.includes('run') && !s.includes('yoga')))
+                return { start: '06:00', durationHours: 1 };
+            if (s.includes('zone 2') && s.includes('run'))
+                return { start: '06:00', durationHours: 1.5 };
+            if (s.includes('yoga') || s.includes('mobility'))
+                return { start: '09:00', durationHours: 1 };
+            if (s.includes('push') || s.includes('pull') || s.includes('legs') ||
+                s.includes('bench') || s.includes('squat'))
+                return { start: '12:00', durationHours: 1.5 };
+            return { start: '12:00', durationHours: 1 };
         }
 
         for (let w = 0; w < plan.plan.weeks.length; w++) {
@@ -8430,20 +8452,21 @@
                 eventDate.setDate(monday.getDate() + (targetDay - 1));
 
                 const dateStr = eventDate.toISOString().split('T')[0];
-                // Use Claude-specified time from plan JSON
-                // If no time set, create as all-day event
-                let eventStart, eventEnd, isAllDay = false;
-                if (sessionTime) {
-                    const durationHours = session.toLowerCase().includes('long run') ? 2.5 : 1.5;
-                    const [h, m] = sessionTime.split(':').map(Number);
-                    const endMins = h * 60 + m + Math.round(durationHours * 60);
+                // Use Claude-specified time if available, else keyword fallback
+                let eventStart, eventEnd;
+                const fallback = getSessionTimes(session);
+                const resolvedTime = sessionTime || (fallback ? fallback.start : null);
+                const resolvedDuration = fallback ? fallback.durationHours : 1.5;
+
+                if (resolvedTime) {
+                    const [h, m] = resolvedTime.split(':').map(Number);
+                    const endMins = h * 60 + m + Math.round(resolvedDuration * 60);
                     const endH = String(Math.floor(endMins / 60)).padStart(2, '0');
                     const endM = String(endMins % 60).padStart(2, '0');
-                    eventStart = { dateTime: dateStr + 'T' + sessionTime + ':00', timeZone };
+                    eventStart = { dateTime: dateStr + 'T' + resolvedTime + ':00', timeZone };
                     eventEnd   = { dateTime: dateStr + 'T' + endH + ':' + endM + ':00', timeZone };
                 } else {
-                    // No time from Claude — all-day event
-                    isAllDay = true;
+                    // Last resort — all-day
                     eventStart = { date: dateStr };
                     eventEnd   = { date: dateStr };
                 }
