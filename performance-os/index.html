@@ -2712,7 +2712,7 @@
                 </div>
                 <div class="garmin-field">
                     <div class="garmin-label">Body Weight</div>
-                    <input class="garmin-input" type="number" id="g-weight" placeholder="—" min="40" max="150" step="0.1" oninput="checkReady()">
+                    <input class="garmin-input" type="number" id="g-weight" placeholder="—" min="0" max="250" step="0.1" oninput="checkReady()">
                     <div class="garmin-unit">kg (optional)</div>
                 </div>
             </div>
@@ -3614,7 +3614,7 @@
         g.readinessScore = parseInt(document.getElementById('g-readiness-score').value) || null;
         g.rem = parseInt(document.getElementById('g-rem').value) || null;
         g.deep = parseInt(document.getElementById('g-deep').value) || null;
-        g.weight = parseFloat(document.getElementById('g-weight').value) || null;
+        g.weight = (document.getElementById('g-weight').value ? parseFloat(document.getElementById('g-weight').value) : null);
         const fallbackOpen = document.getElementById('fallback-section').classList.contains('open');
         const ready = fallbackOpen ? (STATE.manual.quality > 0 && STATE.manual.energy > 0) : (g.sleepScore !== null || g.bodyBattery !== null || g.readiness !== '');
         document.getElementById('gen-btn').disabled = !ready;
@@ -3900,7 +3900,7 @@
 
         ALEX'S PROFILE:
         Goals: 1) Sub-19min 5K (current 19:35) 2) 100kg bench (~88-92kg e1RM, 75kg x6-8) 3) Muscle ups (10-15 pull ups now) 4) Sub-1:30 HM 5) Sub-3:30 marathon
-        Zones: Z1<${getProfile().z2low - 1}, Z2=${getProfile().z2low}-${getProfile().z2high} (easy ${getProfile().z2low}-148), Z3=${getProfile().z3low}-180, Z4=181-${getProfile().z4high}, Z5=${getProfile().z4high + 1}+
+        Zones: Z1<${getProfile().z2low - 1}, Z2=${getProfile().z2low}-${getProfile().z2high}, Z3=${getProfile().z3low}-${getProfile().z4high-15}, Z4=${getProfile().z4high-14}-${getProfile().z4high}, Z5=${getProfile().z4high + 1}+
         Push: bench, OHP, incline DB, lateral raises, tricep dips
         Pull: chest-to-bar pull ups, archer pull ups, slow negatives, barbell rows, face pulls, curls (no weighted pull ups)
         Legs: squats, RDLs, Bulgarian split squats, calf raises, hip/glute work
@@ -7655,30 +7655,76 @@
         const currentPlanSummary = plan ? `Current plan: "${plan.plan.blockTitle}" — ${plan.plan.blockGoal}
         Weeks: ${plan.plan.weeks.map(w => 'Week ' + w.weekNum + ' (' + w.theme + '): ' + w.totalKm).join(', ')}` : 'No saved training plan — using default weekly structure.';
 
+        // Build lift history for coach context
+        const appKeys = Object.keys(appData).filter(k=>!k.startsWith('_')).sort().reverse();
+        let benchBest = null, benchRecent = [];
+        for (const k of appKeys.slice(0,30)) {
+            const entry = appData[k];
+            if (entry && entry.session && entry.session.exercises) {
+                const exs = entry.session.exercises;
+                for (const [key, ex] of Object.entries(exs)) {
+                    if (ex.sets && (key.includes('bench') || (ex.name && ex.name.toLowerCase().includes('bench')))) {
+                        const sets = ex.sets.filter(s=>s.weight&&s.reps);
+                        if (sets.length) {
+                            const topSet = sets.reduce((a,b)=>a.weight>b.weight?a:b);
+                            const e1rm = topSet.reps===1?topSet.weight:Math.round(topSet.weight*(36/(37-Math.min(topSet.reps,36))));
+                            if (!benchBest || e1rm > benchBest.e1rm) benchBest = {date:k, weight:topSet.weight, reps:topSet.reps, e1rm};
+                            if (benchRecent.length < 3) benchRecent.push({date:k, weight:topSet.weight, reps:topSet.reps});
+                        }
+                    }
+                }
+            }
+        }
+        const liftContext = benchBest
+            ? 'Bench best: ' + benchBest.weight + 'kg x' + benchBest.reps + ' (' + benchBest.e1rm + 'kg e1RM on ' + benchBest.date + '). Recent: ' + benchRecent.map(b=>b.weight+'kgx'+b.reps).join(', ')
+            : 'No bench sessions logged yet';
+
+        // Recent session notes for context
+        const recentNotes = appKeys.slice(0,14).filter(k=>appData[k]&&appData[k].session&&appData[k].session.note).map(k=>'('+k+'): "'+appData[k].session.note+'"').join('; ');
+
         const prompt = `You are ${profile.name}'s personal performance coach. The athlete has a message for you about adjusting their training plan.
 
         ATHLETE PROFILE:
-        - Age: ${profile.age}, ${profile.location}
-        - Goals: ${goals.filter(g => g.enabled).map(g => g.name + ' → ' + g.target + (g.unit === 'time' ? '' : g.unit)).join(', ')}
-        - Current weekly volume: ~${Math.round(recentKm)}km from last 5 runs
+        - Age: ${profile.age}, ${profile.location} (heat acclimatised, train by HR zones not pace)
+        - Job: ${profile.job || 'desk job Mon-Fri'}
+        - HR Zones: Z1=<${profile.z2low-1}, Z2=${profile.z2low}-${profile.z2high}, Z3=${profile.z3low}-${profile.z4high-15}, Z4=${profile.z4high-14}-${profile.z4high}, Z5=${profile.z4high+1}+
+        - Goals: ${goals.filter(g=>g.enabled).map(g=>g.name+' → '+g.target).join(', ')}
+        - Current weekly volume: ~${Math.round(recentKm)}km
+
+        LIFT HISTORY:
+        - ${liftContext}
+
+        WEEKLY STRUCTURE (keep this intact unless specifically asked to change):
+        - Monday: Push — bench press (progressive overload), OHP, incline DB, lateral raises, tricep dips
+        - Tuesday: Zone 2 run before 7am — ${profile.z2low}-148bpm conversational pace
+        - Wednesday: Pull — chest to bar pullups, archer pullups, slow negatives, barbell rows, face pulls, bicep curls
+        - Thursday: Intervals before 7am — time-based 30s hard/90s easy, Zone 3-4
+        - Friday: Rest
+        - Saturday: Parkrun 5K tempo
+        - Sunday: Long run Zone 2 + yoga/mobility 30-45 min
 
         CURRENT PLAN:
         ${currentPlanSummary}
 
         UPCOMING RACES:
-        ${races.length ? races.map(r => r.name + ' (' + r.distance + ') on ' + r.date).join(', ') : 'None scheduled'}
+        ${races.length ? races.map(r=>r.name+' ('+r.distance+') on '+r.date).join(', ') : 'None scheduled'}
+
+        ${recentNotes ? 'RECENT SESSION NOTES:\n        ' + recentNotes : ''}
 
         ATHLETE MESSAGE: "${message}"
 
-        Respond as a coach would — acknowledge what they want, explain what you're adjusting and why, then provide the updated plan.
-
         CRITICAL: Respond ONLY with valid compact JSON. No markdown, no backticks.
-Keep ALL string values SHORT (under 80 chars). Use abbreviations like "4x5@80%".
+        Keep string values SHORT (under 80 chars each). Use abbreviations: "4x5@80%" not "4 sets of 5 reps".
 
-{"coachResponse":"1-2 sentences","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":"Push: bench 4x5@80%, OHP 3x8, incline 3x10, laterals, dips","Tue":"Z2 run 6km <148bpm pre-7am","Wed":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8, face pulls","Thu":"Intervals 6x(30s hard/90s easy) pre-7am","Fri":"Rest","Sat":"Parkrun 5K tempo","Sun":"Long run 11km Z2 + yoga 30min"}}]}}
+        {"coachResponse":"2-3 sentences acknowledging request and key decisions","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":"Push: bench 4x5@82.5kg, OHP 3x8@50kg, incline 3x10, laterals, dips","Tue":"Z2 run 6km <148bpm pre-7am","Wed":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8@60kg, face pulls","Thu":"Intervals 6x(30s hard/90s easy) pre-7am","Fri":"Rest","Sat":"Parkrun 5K tempo","Sun":"Long run 11km Z2 + yoga 30min"}}]}}
 
-RULES: All weeks included, Mon Push/Wed Pull/Sat Parkrun/Sun Long run, 10% weekly volume.
-If no plan change needed: planUpdated=false, updatedPlan=null.`;
+        RULES:
+        - Include ALL weeks requested — do not stop early
+        - Keep Mon Push/Tue Z2/Wed Pull/Thu Intervals/Fri Rest/Sat Parkrun/Sun Long run every week
+        - Use actual weights from lift history for bench progression
+        - 10% weekly run volume increase
+        - Short strings only to avoid JSON truncation
+        If no plan change needed: planUpdated=false, updatedPlan=null.`;
 
         try {
             const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -8354,22 +8400,46 @@ If no plan change needed: planUpdated=false, updatedPlan=null.`;
 
     async function deleteOurCalendarEvents() {
         const token = ls(SK.accessToken);
-        if (!token)
-            return;
+        if (!token) return;
         const appData = getAppData();
         const eventIds = appData._calendarEventIds || [];
+
+        // Step 1: Delete by stored IDs
         for (const id of eventIds) {
             try {
                 await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id, {
                     method: 'DELETE',
-                    headers: {
-                        Authorization: 'Bearer ' + token
-                    }
+                    headers: { Authorization: 'Bearer ' + token }
                 });
             } catch (e) {}
         }
+
+        // Step 2: Safety net — search for any remaining events with our tag
+        // This catches events that were created but IDs weren't saved properly
+        try {
+            const searchRes = await fetch(
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events?privateExtendedProperty=performanceOS%3Dtrue&maxResults=250',
+                { headers: { Authorization: 'Bearer ' + token } }
+            );
+            if (searchRes.ok) {
+                const data = await searchRes.json();
+                const items = data.items || [];
+                for (const ev of items) {
+                    try {
+                        await fetch(
+                            'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + ev.id,
+                            { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
+                        );
+                    } catch (e) {}
+                }
+                console.log('Deleted', items.length, 'tagged events');
+            }
+        } catch (e) { console.log('Tag search failed:', e); }
+
+        // Clear IDs from both localStorage AND Drive
         appData._calendarEventIds = [];
         lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
     }
 
     // ── INIT ──
