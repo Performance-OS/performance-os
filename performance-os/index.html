@@ -2894,6 +2894,10 @@
                 <textarea id="coach-message-input" placeholder="e.g. I want to do parkrun on 28th June, adjust the plan around it..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;resize:none;height:80px;line-height:1.5;transition:border-color .15s" onfocus="this.style.borderColor='rgba(200,245,96,.4)'" onblur="this.style.borderColor='var(--border)'"></textarea>
                 <button onclick="messageCoach()" id="coach-message-btn" style="width:100%;margin-top:.75rem;padding:12px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--r);font-size:13px;font-weight:700;font-family:var(--font-display);cursor:pointer;transition:opacity .15s">Ask your coach →</button>
                 <div id="coach-message-loading" style="display:none;text-align:center;padding:.75rem;font-size:11px;font-family:var(--font-mono);color:var(--muted)">Coach is thinking...</div>
+                <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
+                  <button onclick="calendarSync()" style="font-size:11px;font-family:var(--font-mono);padding:8px 14px;background:var(--accent);color:#0a0a0a;border:none;border-radius:8px;cursor:pointer;font-weight:600">📅 Sync plan to Calendar</button>
+                  <button onclick="calendarNuke()" style="font-size:11px;font-family:var(--font-mono);padding:8px 14px;background:transparent;color:var(--danger);border:1px solid rgba(245,96,96,.3);border-radius:8px;cursor:pointer">🗑 Delete all training events</button>
+                </div>
                 <div id="coach-message-response" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font-mono);color:var(--text);line-height:1.6"></div>
             </div>
 
@@ -7433,9 +7437,11 @@
         html += weeks.map((wk, i) => {
             const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             const dayRows = dayOrder.map(d => {
-                const detail = wk.days[d] || '';
-                if (!detail)
-                    return '';
+                const rawDay = wk.days[d];
+                const detail = rawDay
+                    ? (typeof rawDay === 'object' && rawDay !== null ? rawDay.session : rawDay)
+                    : '';
+                if (!detail) return '';
                 return `<div class="cal-day-row">
                         <div class="cal-day-label">${d}</div>
                         <div class="cal-day-detail">${detail}</div>
@@ -7593,6 +7599,31 @@
         buildDataScreen();
     }
 
+    async function calendarSync() {
+        // Called from inline button in calendar tab after coach updates plan
+        const btn = event.target;
+        btn.textContent = '⏳ Syncing...';
+        btn.disabled = true;
+        const count = await writeTrainingPlanToCalendar();
+        if (count > 0) {
+            btn.textContent = '✓ ' + count + ' events added';
+            btn.style.background = 'var(--success)';
+        } else {
+            btn.textContent = 'No plan to sync';
+            btn.disabled = false;
+        }
+    }
+
+    async function calendarNuke() {
+        // Delete ALL our training events from Google Calendar
+        const btn = event.target;
+        btn.textContent = '⏳ Deleting...';
+        btn.disabled = true;
+        const deleted = await deleteOurCalendarEvents();
+        btn.textContent = '✓ Deleted ' + deleted + ' events';
+        btn.style.color = 'var(--success)';
+    }
+
     async function syncPlanToCalendar() {
         showDataMsg('Syncing to Google Calendar...', 'var(--muted2)');
         const count = await writeTrainingPlanToCalendar();
@@ -7694,14 +7725,21 @@
         LIFT HISTORY:
         - ${liftContext}
 
-        WEEKLY STRUCTURE (keep this intact unless specifically asked to change):
-        - Monday: Push — bench press (progressive overload), OHP, incline DB, lateral raises, tricep dips
-        - Tuesday: Zone 2 run before 7am — ${profile.z2low}-148bpm conversational pace
-        - Wednesday: Pull — chest to bar pullups, archer pullups, slow negatives, barbell rows, face pulls, bicep curls
-        - Thursday: Intervals before 7am — time-based 30s hard/90s easy, Zone 3-4
-        - Friday: Rest
-        - Saturday: Parkrun 5K tempo
-        - Sunday: Long run Zone 2 + yoga/mobility 30-45 min
+        WEEKLY STRUCTURE — keep this intact unless athlete specifically asks to change it:
+        - Monday: Push (LUNCHTIME ~12pm) — bench press progressive overload, OHP, incline DB, lateral raises, tricep dips
+        - Tuesday: Zone 2 run (BEFORE 7AM) — ${profile.z2low}-${profile.z2high}bpm, conversational pace
+        - Wednesday: Pull (LUNCHTIME ~12pm) — chest-to-bar pullups, archer pullups, slow negatives, barbell rows, face pulls, bicep curls
+        - Thursday: Intervals (BEFORE 7AM) — 30s hard/90s easy repeats, Zone 3-4
+        - Friday: Rest / active recovery
+        - Saturday: Parkrun 5K (MORNING ~7am) — treat as tempo/race effort
+        - Sunday: Long run Zone 2 (MORNING ~6am) + yoga/mobility 30-45 min
+
+        CRITICAL TIMING RULES — always follow these:
+        - Gym sessions (Push/Pull/Legs) = LUNCHTIME, never early morning
+        - Runs = BEFORE 7AM (cooler, less humid in Singapore)
+        - Parkrun = Saturday morning 7am
+        - Long run = Sunday morning, before heat builds
+        - NEVER schedule gym at 6am or runs at lunchtime
 
         CURRENT PLAN:
         ${currentPlanSummary}
@@ -7716,14 +7754,17 @@
         CRITICAL: Respond ONLY with valid compact JSON. No markdown, no backticks.
         Keep string values SHORT (under 80 chars each). Use abbreviations: "4x5@80%" not "4 sets of 5 reps".
 
-        {"coachResponse":"2-3 sentences acknowledging request and key decisions","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":"Push: bench 4x5@82.5kg, OHP 3x8@50kg, incline 3x10, laterals, dips","Tue":"Z2 run 6km <148bpm pre-7am","Wed":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8@60kg, face pulls","Thu":"Intervals 6x(30s hard/90s easy) pre-7am","Fri":"Rest","Sat":"Parkrun 5K tempo","Sun":"Long run 11km Z2 + yoga 30min"}}]}}
+        {"coachResponse":"2-3 sentences acknowledging request and key decisions","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":{"session":"Push: bench 4x5@82.5kg, OHP 3x8@50kg, incline 3x10, laterals, dips","time":"12:00"},"Tue":{"session":"Z2 run 6km pre-7am","time":"06:00"},"Wed":{"session":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8@60kg, face pulls","time":"12:00"},"Thu":{"session":"Intervals 6x(30s hard/90s easy)","time":"06:00"},"Fri":{"session":"Rest","time":null},"Sat":{"session":"Parkrun 5K tempo","time":"07:00"},"Sun":{"session":"Long run 11km Z2 + yoga 30min","time":"06:00"}}}}]}}
 
         RULES:
+        - Each day must have "session" (description) and "time" (HH:MM start, null for rest)
         - Include ALL weeks requested — do not stop early
         - Keep Mon Push/Tue Z2/Wed Pull/Thu Intervals/Fri Rest/Sat Parkrun/Sun Long run every week
         - Use actual weights from lift history for bench progression
         - 10% weekly run volume increase
         - Short strings only to avoid JSON truncation
+        - Default times: gym sessions=12:00 (lunch), morning runs=06:00, parkrun=07:00, yoga=09:00
+        - If athlete specifies different times, use those instead
         If no plan change needed: planUpdated=false, updatedPlan=null.`;
 
         try {
@@ -7769,9 +7810,11 @@
                     const wg = document.getElementById('week-grid');
                     if (wg)
                         buildWeekGrid(getAppData());
-                    const count = await writeTrainingPlanToCalendar();
-                    if (count > 0)
-                        response.innerHTML += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--success)">✓ \${count} sessions added to Google Calendar</div>`;
+                    // Show sync button inline in calendar tab
+                    response.innerHTML += `<div style="margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap">
+                      <button onclick="calendarSync()" style="font-size:11px;font-family:var(--font-mono);padding:8px 14px;background:var(--accent);color:#0a0a0a;border:none;border-radius:8px;cursor:pointer;font-weight:600">📅 Sync to Calendar</button>
+                      <button onclick="calendarNuke()" style="font-size:11px;font-family:var(--font-mono);padding:8px 14px;background:transparent;color:var(--danger);border:1px solid rgba(245,96,96,.3);border-radius:8px;cursor:pointer">🗑 Delete all training events</button>
+                    </div>`;
                 }, 500);
             }
 
@@ -7832,7 +7875,10 @@
             'Sunday': 'Sun'
         };
         const planKey = dayMap[dayName];
-        return currentWeek.days[planKey] || null;
+        const val = currentWeek.days[planKey];
+        if (!val) return null;
+        // Handle both string format and new {session, time} object format
+        return (typeof val === 'object' && val !== null) ? val.session : val;
     }
 
     function getTrainingPlanWeek(weekOffset=0) {
@@ -8136,18 +8182,15 @@
         if (input) {
             input.value = 'I have calendar conflicts that need adjusting in my training plan: ' + conflictText + '. Please update the plan to work around these.';
             switchTab('calendar');
-            // Auto-generate after a short delay
-            setTimeout(() => messageCoach(), 500);
+            // Don't auto-send — user reviews and presses Ask coach manually
         } else {
-            // Navigate to calendar and trigger directly
             switchTab('calendar');
-            setTimeout(async () => {
+            setTimeout(() => {
                 const el = document.getElementById('coach-message-input');
                 if (el) {
                     el.value = 'My calendar has the following scheduling constraints that need reflecting in my training plan: ' + conflictText + '. Please adjust the plan accordingly.';
-                    await messageCoach();
                 }
-            }, 800);
+            }, 500);
         }
     }
 
@@ -8280,123 +8323,8 @@
     // ── WRITE TRAINING SESSIONS TO GOOGLE CALENDAR ──
     const TRAINING_EVENT_PREFIX = '🏋️ '; // Prefix identifies our events so reader ignores them
 
-    async function writeTrainingPlanToCalendar() {
-        const token = ls(SK.accessToken);
-        const expiry = parseInt(ls(SK.tokenExpiry) || '0');
-        if (!token || Date.now() > expiry - 60000) {
-            console.log('Calendar write: no valid token');
-            return;
-        }
+    
 
-        const appData = getAppData();
-        const plan = appData._trainingPlan;
-        if (!plan || !plan.plan || !plan.plan.weeks) {
-            console.log('Calendar write: no training plan');
-            return;
-        }
-
-        // First delete any existing training events we created (to avoid duplicates)
-        await deleteOurCalendarEvents();
-
-        // Create events for next 8 weeks
-        const dayMap = {
-            Mon: 1,
-            Tue: 2,
-            Wed: 3,
-            Thu: 4,
-            Fri: 5,
-            Sat: 6,
-            Sun: 0
-        };
-        const createdEvents = [];
-
-        for (let w = 0; w < plan.plan.weeks.length; w++) {
-            const week = plan.plan.weeks[w];
-            if (!week || !week.days)
-                continue;
-
-            // Calculate Monday of this week
-            const monday = new Date(getThisMonday());
-            monday.setDate(monday.getDate() + (w * 7));
-
-            for (const [dayKey, session] of Object.entries(week.days)) {
-                if (!session || session === 'Rest' || session.toLowerCase().includes('rest'))
-                    continue;
-
-                const dayOffset = dayMap[dayKey];
-                if (dayOffset === undefined)
-                    continue;
-
-                const eventDate = new Date(monday);
-                // Calculate correct day offset from Monday
-                const mondayDay = 1; // Monday=1
-                const targetDay = dayOffset === 0 ? 7 : dayOffset; // Sun=7
-                eventDate.setDate(monday.getDate() + (targetDay - mondayDay));
-
-                const dateStr = eventDate.toISOString().split('T')[0];
-
-                // Set time based on session type
-                let startTime = '07:00',
-                    endTime = '08:00';
-                if (session.toLowerCase().includes('run') && !session.toLowerCase().includes('long')) {
-                    startTime = '06:00';
-                    endTime = '07:00';
-                } else if (session.toLowerCase().includes('long run')) {
-                    startTime = '06:00';
-                    endTime = '08:30';
-                } else if (session.toLowerCase().includes('yoga') || session.toLowerCase().includes('mobility')) {
-                    startTime = '08:00';
-                    endTime = '09:00';
-                }
-
-                const event = {
-                    summary: TRAINING_EVENT_PREFIX + session.slice(0, 50),
-                    // Prefix so reader ignores it
-                    description: 'Performance OS training session. ' + session,
-                    start: {
-                        dateTime: dateStr + 'T' + startTime + ':00',
-                        timeZone: 'Asia/Singapore'
-                    },
-                    end: {
-                        dateTime: dateStr + 'T' + endTime + ':00',
-                        timeZone: 'Asia/Singapore'
-                    },
-                    colorId: '2',
-                    // Sage green
-                    extendedProperties: {
-                        private: {
-                            performanceOS: 'true',
-                            weekNum: String(w + 1)
-                        }
-                    }
-                };
-
-                try {
-                    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-                        method: 'POST',
-                        headers: {
-                            Authorization: 'Bearer ' + token,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(event)
-                    });
-                    if (res.ok) {
-                        const created = await res.json();
-                        createdEvents.push(created.id);
-                    }
-                } catch (e) {
-                    console.log('Failed to create event:', e);
-                }
-            }
-        }
-
-        // Save created event IDs so we can delete them later
-        appData._calendarEventIds = createdEvents;
-        lss(SK.data, JSON.stringify(appData));
-        saveToDrive(appData);
-        console.log('Created', createdEvents.length, 'calendar events');
-        return createdEvents.length;
-    }
 
     async function deleteOurCalendarEvents() {
         const token = ls(SK.accessToken);
@@ -8476,16 +8404,9 @@
 
         // Session time defaults by type (SGT / local time)
         function getSessionTimes(session) {
-            const s = session.toLowerCase();
-            if (s.includes('parkrun') || s.includes('interval') || (s.includes('run') && !s.includes('long')))
-                return { start: '06:00', end: '07:00' };
-            if (s.includes('long run'))
-                return { start: '06:00', end: '08:30' };
-            if (s.includes('yoga') || s.includes('mobility'))
-                return { start: '08:30', end: '09:30' };
-            if (s.includes('push') || s.includes('pull') || s.includes('legs'))
-                return { start: '12:00', end: '13:30' };
-            return { start: '07:00', end: '08:00' };
+            // Times come from Claude's plan JSON — no hardcoded fallbacks
+            // If no time is set in the plan, event will be created as all-day
+            return null;
         }
 
         for (let w = 0; w < plan.plan.weeks.length; w++) {
@@ -8495,7 +8416,10 @@
             const monday = new Date(getThisMonday());
             monday.setDate(monday.getDate() + (w * 7));
 
-            for (const [dayKey, session] of Object.entries(week.days)) {
+            for (const [dayKey, dayVal] of Object.entries(week.days)) {
+                // Support both string format and {session, time} object format
+                const session = (typeof dayVal === 'object' && dayVal !== null) ? dayVal.session : dayVal;
+                const sessionTime = (typeof dayVal === 'object' && dayVal !== null) ? dayVal.time : null;
                 if (!session || session === 'Rest' || session.toLowerCase().includes('rest')) continue;
 
                 const dayOffset = dayMap[dayKey];
@@ -8506,13 +8430,29 @@
                 eventDate.setDate(monday.getDate() + (targetDay - 1));
 
                 const dateStr = eventDate.toISOString().split('T')[0];
-                const { start, end } = getSessionTimes(session);
+                // Use Claude-specified time from plan JSON
+                // If no time set, create as all-day event
+                let eventStart, eventEnd, isAllDay = false;
+                if (sessionTime) {
+                    const durationHours = session.toLowerCase().includes('long run') ? 2.5 : 1.5;
+                    const [h, m] = sessionTime.split(':').map(Number);
+                    const endMins = h * 60 + m + Math.round(durationHours * 60);
+                    const endH = String(Math.floor(endMins / 60)).padStart(2, '0');
+                    const endM = String(endMins % 60).padStart(2, '0');
+                    eventStart = { dateTime: dateStr + 'T' + sessionTime + ':00', timeZone };
+                    eventEnd   = { dateTime: dateStr + 'T' + endH + ':' + endM + ':00', timeZone };
+                } else {
+                    // No time from Claude — all-day event
+                    isAllDay = true;
+                    eventStart = { date: dateStr };
+                    eventEnd   = { date: dateStr };
+                }
 
                 const event = {
                     summary: TRAINING_EVENT_PREFIX + session.slice(0, 60),
                     description: 'Performance OS training session. ' + session,
-                    start: { dateTime: dateStr + 'T' + start + ':00', timeZone },
-                    end:   { dateTime: dateStr + 'T' + end   + ':00', timeZone },
+                    start: eventStart,
+                    end: eventEnd,
                     colorId: '2',
                     extendedProperties: {
                         private: { performanceOS: 'true', weekNum: String(w + 1) }
