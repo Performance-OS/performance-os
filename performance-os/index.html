@@ -7749,6 +7749,22 @@
 
         ${recentNotes ? 'RECENT SESSION NOTES:\n        ' + recentNotes : ''}
 
+        CALENDAR CONSTRAINTS (from Google Calendar — anonymised, build plan around these):
+        ${(()=>{
+            const conflicts = appData._calendarConflicts || [];
+            if (!conflicts.length) return 'None detected.';
+            return conflicts.map(c => {
+                const dates = c.start + (c.end && c.end !== c.start ? ' to ' + c.end : '');
+                return '- ' + c.label + ' (' + dates + '): ' + (c.trainingNote || 'adjust training accordingly');
+            }).join('\n        ');
+        })()}
+
+        CALENDAR RULES:
+        - Holiday/travel: runs and bodyweight only, no gym equipment assumed
+        - Working away: runs ok, no gym unless athlete says otherwise
+        - Late social: next morning session should be easy, not hard
+        - Do NOT schedule gym sessions during holidays or travel dates
+
         ATHLETE MESSAGE: "${message}"
 
         CRITICAL: Respond ONLY with valid compact JSON. No markdown, no backticks.
