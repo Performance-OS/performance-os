@@ -8400,46 +8400,152 @@
 
     async function deleteOurCalendarEvents() {
         const token = ls(SK.accessToken);
-        if (!token) return;
+        if (!token) return 0;
         const appData = getAppData();
-        const eventIds = appData._calendarEventIds || [];
 
-        // Step 1: Delete by stored IDs
+        let deleted = 0;
+
+        // Step 1: Delete by stored IDs (fast path)
+        const eventIds = appData._calendarEventIds || [];
         for (const id of eventIds) {
             try {
-                await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id, {
-                    method: 'DELETE',
-                    headers: { Authorization: 'Bearer ' + token }
-                });
+                const res = await fetch(
+                    'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + id,
+                    { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
+                );
+                if (res.ok || res.status === 404 || res.status === 410) deleted++;
             } catch (e) {}
         }
 
-        // Step 2: Safety net — search for any remaining events with our tag
-        // This catches events that were created but IDs weren't saved properly
+        // Step 2: Tag-based sweep — catches any orphaned events
         try {
-            const searchRes = await fetch(
-                'https://www.googleapis.com/calendar/v3/calendars/primary/events?privateExtendedProperty=performanceOS%3Dtrue&maxResults=250',
-                { headers: { Authorization: 'Bearer ' + token } }
-            );
-            if (searchRes.ok) {
+            let pageToken = '';
+            do {
+                const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+                    + '?privateExtendedProperty=performanceOS%3Dtrue&maxResults=250&showDeleted=false'
+                    + (pageToken ? '&pageToken=' + pageToken : '');
+                const searchRes = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+                if (!searchRes.ok) break;
                 const data = await searchRes.json();
-                const items = data.items || [];
-                for (const ev of items) {
+                for (const ev of (data.items || [])) {
                     try {
                         await fetch(
                             'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + ev.id,
                             { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
                         );
+                        deleted++;
                     } catch (e) {}
                 }
-                console.log('Deleted', items.length, 'tagged events');
-            }
-        } catch (e) { console.log('Tag search failed:', e); }
+                pageToken = data.nextPageToken || '';
+            } while (pageToken);
+        } catch (e) { console.log('Tag sweep failed:', e); }
 
-        // Clear IDs from both localStorage AND Drive
+        // Clear IDs — save to BOTH localStorage and Drive
         appData._calendarEventIds = [];
         lss(SK.data, JSON.stringify(appData));
         await saveToDrive(appData);
+        console.log('Deleted', deleted, 'calendar events');
+        return deleted;
+    }
+
+    async function writeTrainingPlanToCalendar() {
+        const token = ls(SK.accessToken);
+        const expiry = parseInt(ls(SK.tokenExpiry) || '0');
+        if (!token || Date.now() > expiry - 60000) {
+            console.log('Calendar write: no valid token');
+            return 0;
+        }
+
+        const appData = getAppData();
+        const plan = appData._trainingPlan;
+        if (!plan || !plan.plan || !plan.plan.weeks) {
+            console.log('Calendar write: no training plan');
+            return 0;
+        }
+
+        // Delete ALL existing performance OS events first — wait for completion
+        await deleteOurCalendarEvents();
+
+        // Detect user timezone — use SGT as default, device timezone when travelling
+        const deviceTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timeZone = deviceTZ || 'Asia/Singapore';
+        console.log('Writing calendar events in timezone:', timeZone);
+
+        const dayMap = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6, Sun:0 };
+        const createdEvents = [];
+
+        // Session time defaults by type (SGT / local time)
+        function getSessionTimes(session) {
+            const s = session.toLowerCase();
+            if (s.includes('parkrun') || s.includes('interval') || (s.includes('run') && !s.includes('long')))
+                return { start: '06:00', end: '07:00' };
+            if (s.includes('long run'))
+                return { start: '06:00', end: '08:30' };
+            if (s.includes('yoga') || s.includes('mobility'))
+                return { start: '08:30', end: '09:30' };
+            if (s.includes('push') || s.includes('pull') || s.includes('legs'))
+                return { start: '12:00', end: '13:30' };
+            return { start: '07:00', end: '08:00' };
+        }
+
+        for (let w = 0; w < plan.plan.weeks.length; w++) {
+            const week = plan.plan.weeks[w];
+            if (!week || !week.days) continue;
+
+            const monday = new Date(getThisMonday());
+            monday.setDate(monday.getDate() + (w * 7));
+
+            for (const [dayKey, session] of Object.entries(week.days)) {
+                if (!session || session === 'Rest' || session.toLowerCase().includes('rest')) continue;
+
+                const dayOffset = dayMap[dayKey];
+                if (dayOffset === undefined) continue;
+
+                const eventDate = new Date(monday);
+                const targetDay = dayOffset === 0 ? 7 : dayOffset;
+                eventDate.setDate(monday.getDate() + (targetDay - 1));
+
+                const dateStr = eventDate.toISOString().split('T')[0];
+                const { start, end } = getSessionTimes(session);
+
+                const event = {
+                    summary: TRAINING_EVENT_PREFIX + session.slice(0, 60),
+                    description: 'Performance OS training session. ' + session,
+                    start: { dateTime: dateStr + 'T' + start + ':00', timeZone },
+                    end:   { dateTime: dateStr + 'T' + end   + ':00', timeZone },
+                    colorId: '2',
+                    extendedProperties: {
+                        private: { performanceOS: 'true', weekNum: String(w + 1) }
+                    }
+                };
+
+                try {
+                    const res = await fetch(
+                        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                        {
+                            method: 'POST',
+                            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+                            body: JSON.stringify(event)
+                        }
+                    );
+                    if (res.ok) {
+                        const created = await res.json();
+                        createdEvents.push(created.id);
+                    } else {
+                        console.log('Event create failed:', res.status, await res.text());
+                    }
+                } catch (e) {
+                    console.log('Failed to create event:', e);
+                }
+            }
+        }
+
+        // Save IDs to Drive immediately so delete works next time
+        appData._calendarEventIds = createdEvents;
+        lss(SK.data, JSON.stringify(appData));
+        await saveToDrive(appData);
+        console.log('Created', createdEvents.length, 'calendar events in', timeZone);
+        return createdEvents.length;
     }
 
     // ── INIT ──
