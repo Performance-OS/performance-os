@@ -4591,7 +4591,58 @@
             }
         }
 
-        const exercises = WORKOUTS[dayName];
+        // Load exercises from coach plan first, fall back to WORKOUTS constants
+        const planDayText = getTrainingPlanDay(dayName);
+        let exercises = WORKOUTS[dayName]; // fallback
+
+        // Check if plan has structured exercises array
+        const appDataForPlan = getAppData();
+        const plan = appDataForPlan._trainingPlan;
+        let planExercises = null;
+        if (plan && plan.plan && plan.plan.weeks) {
+            const planStart = new Date(plan.generatedDate || plan.updatedDate || todayKey);
+            const weeksSince = Math.max(0, Math.floor((new Date(todayKey) - planStart) / (7*24*60*60*1000)));
+            const weekIdx = Math.min(weeksSince, plan.plan.weeks.length - 1);
+            const week = plan.plan.weeks[weekIdx];
+            const dayMap = {Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat',Sunday:'Sun'};
+            const dayKey = dayMap[dayName];
+            if (week && week.days && dayKey) {
+                const dayVal = week.days[dayKey];
+                const exArray = typeof dayVal === 'object' && dayVal !== null ? dayVal.exercises : null;
+                if (exArray && exArray.length > 0) {
+                    planExercises = exArray;
+                }
+            }
+        }
+
+        // If plan has exercises, convert to log format
+        if (planExercises) {
+            exercises = planExercises.map(ex => ({
+                key: ex.name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_'),
+                name: ex.name,
+                target: ex.sets + ' sets x ' + ex.reps + (ex.load && ex.load !== 'BW' ? ' @ ' + ex.load : ''),
+                note: ex.note || '',
+                defaultSets: parseInt(ex.sets) || 3,
+                swaps: (ex.swaps || []).map((s, i) => ({
+                    key: s.toLowerCase().replace(/[^a-z0-9]/g,'_'),
+                    name: s,
+                    target: ex.sets + ' sets x ' + ex.reps
+                }))
+            }));
+        }
+
+        // Show plan source indicator
+        if (planExercises) {
+            const planBadge = document.createElement('div');
+            planBadge.style.cssText = 'font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-bottom:.5rem;display:flex;align-items:center;gap:6px';
+            planBadge.innerHTML = '<span style="background:rgba(200,245,96,.1);border:1px solid rgba(200,245,96,.2);padding:2px 8px;border-radius:20px">📋 From your coach plan</span>';
+            content.insertBefore(planBadge, content.firstChild);
+        } else if (!REST_DAYS.includes(dayName) && exercises && exercises.length) {
+            const fallbackBadge = document.createElement('div');
+            fallbackBadge.style.cssText = 'font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-bottom:.5rem';
+            fallbackBadge.innerHTML = '⚠️ Using default exercises — ask coach to generate a plan with exercises';
+            content.insertBefore(fallbackBadge, content.firstChild);
+        }
 
         // Daily mobility option — shown on ALL days at bottom of log
         // (handled separately below after main session content)
@@ -4950,7 +5001,45 @@
             if (cache.day !== dayName || cache.date !== todayKey)
                 return false;
             // Restore sets for each exercise
-            const exercises = WORKOUTS[dayName];
+            // Load exercises from coach plan first, fall back to WORKOUTS constants
+        const planDayText = getTrainingPlanDay(dayName);
+        let exercises = WORKOUTS[dayName]; // fallback
+
+        // Check if plan has structured exercises array
+        const appDataForPlan = getAppData();
+        const plan = appDataForPlan._trainingPlan;
+        let planExercises = null;
+        if (plan && plan.plan && plan.plan.weeks) {
+            const planStart = new Date(plan.generatedDate || plan.updatedDate || todayKey);
+            const weeksSince = Math.max(0, Math.floor((new Date(todayKey) - planStart) / (7*24*60*60*1000)));
+            const weekIdx = Math.min(weeksSince, plan.plan.weeks.length - 1);
+            const week = plan.plan.weeks[weekIdx];
+            const dayMap = {Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat',Sunday:'Sun'};
+            const dayKey = dayMap[dayName];
+            if (week && week.days && dayKey) {
+                const dayVal = week.days[dayKey];
+                const exArray = typeof dayVal === 'object' && dayVal !== null ? dayVal.exercises : null;
+                if (exArray && exArray.length > 0) {
+                    planExercises = exArray;
+                }
+            }
+        }
+
+        // If plan has exercises, convert to log format
+        if (planExercises) {
+            exercises = planExercises.map(ex => ({
+                key: ex.name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_'),
+                name: ex.name,
+                target: ex.sets + ' sets x ' + ex.reps + (ex.load && ex.load !== 'BW' ? ' @ ' + ex.load : ''),
+                note: ex.note || '',
+                defaultSets: parseInt(ex.sets) || 3,
+                swaps: (ex.swaps || []).map((s, i) => ({
+                    key: s.toLowerCase().replace(/[^a-z0-9]/g,'_'),
+                    name: s,
+                    target: ex.sets + ' sets x ' + ex.reps
+                }))
+            }));
+        }
             if (!exercises)
                 return false;
             exercises.forEach(ex => {
@@ -4990,7 +5079,45 @@
     }
 
     function saveSession() {
-        const exercises = WORKOUTS[dayName];
+        // Load exercises from coach plan first, fall back to WORKOUTS constants
+        const planDayText = getTrainingPlanDay(dayName);
+        let exercises = WORKOUTS[dayName]; // fallback
+
+        // Check if plan has structured exercises array
+        const appDataForPlan = getAppData();
+        const plan = appDataForPlan._trainingPlan;
+        let planExercises = null;
+        if (plan && plan.plan && plan.plan.weeks) {
+            const planStart = new Date(plan.generatedDate || plan.updatedDate || todayKey);
+            const weeksSince = Math.max(0, Math.floor((new Date(todayKey) - planStart) / (7*24*60*60*1000)));
+            const weekIdx = Math.min(weeksSince, plan.plan.weeks.length - 1);
+            const week = plan.plan.weeks[weekIdx];
+            const dayMap = {Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat',Sunday:'Sun'};
+            const dayKey = dayMap[dayName];
+            if (week && week.days && dayKey) {
+                const dayVal = week.days[dayKey];
+                const exArray = typeof dayVal === 'object' && dayVal !== null ? dayVal.exercises : null;
+                if (exArray && exArray.length > 0) {
+                    planExercises = exArray;
+                }
+            }
+        }
+
+        // If plan has exercises, convert to log format
+        if (planExercises) {
+            exercises = planExercises.map(ex => ({
+                key: ex.name.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_'),
+                name: ex.name,
+                target: ex.sets + ' sets x ' + ex.reps + (ex.load && ex.load !== 'BW' ? ' @ ' + ex.load : ''),
+                note: ex.note || '',
+                defaultSets: parseInt(ex.sets) || 3,
+                swaps: (ex.swaps || []).map((s, i) => ({
+                    key: s.toLowerCase().replace(/[^a-z0-9]/g,'_'),
+                    name: s,
+                    target: ex.sets + ' sets x ' + ex.reps
+                }))
+            }));
+        }
         if (!exercises)
             return;
 
@@ -7768,19 +7895,42 @@
         ATHLETE MESSAGE: "${message}"
 
         CRITICAL: Respond ONLY with valid compact JSON. No markdown, no backticks.
-        Keep string values SHORT (under 80 chars each). Use abbreviations: "4x5@80%" not "4 sets of 5 reps".
+        Keep ALL string values SHORT (under 80 chars). Abbreviate: "4x5@80kg" not "4 sets of 5 reps at 80kg".
 
-        {"coachResponse":"2-3 sentences acknowledging request and key decisions","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{"Mon":{"session":"Push: bench 4x5@82.5kg, OHP 3x8@50kg, incline 3x10, laterals, dips","time":"12:00"},"Tue":{"session":"Z2 run 6km pre-7am","time":"06:00"},"Wed":{"session":"Pull: C2B 4x5, archer 3x5, neg 3x5, rows 4x8@60kg, face pulls","time":"12:00"},"Thu":{"session":"Intervals 6x(30s hard/90s easy)","time":"06:00"},"Fri":{"session":"Rest","time":null},"Sat":{"session":"Parkrun 5K tempo","time":"07:00"},"Sun":{"session":"Long run 11km Z2 + yoga 30min","time":"06:00"}}}}]}}
+        {"coachResponse":"2-3 sentences","planUpdated":true,"updatedPlan":{"blockTitle":"title","blockGoal":"goal","coachNote":"note","weeks":[{"weekNum":1,"theme":"Base","totalKm":"25km","keyFocus":"focus","days":{
+          "Mon":{"session":"Push","time":"12:30","exercises":[
+            {"name":"Bench Press","sets":4,"reps":"5","load":"82.5kg","note":"controlled descent","swaps":["DB Bench Press","Floor Press","Pin Press"]},
+            {"name":"Overhead Press","sets":3,"reps":"8","load":"50kg","note":"strict form","swaps":["DB Shoulder Press","Arnold Press","Landmine Press"]},
+            {"name":"Incline DB Press","sets":3,"reps":"10","load":"24kg","note":"full ROM","swaps":["Cable Fly","Pec Dec","DB Fly"]},
+            {"name":"Lateral Raises","sets":3,"reps":"12","load":"10kg","note":"controlled","swaps":["Cable Lateral","Band Lateral","Upright Row"]},
+            {"name":"Tricep Dips","sets":3,"reps":"10","load":"BW","note":"full depth","swaps":["Skull Crushers","Cable Pushdown","Close Grip Bench"]}
+          ]},
+          "Tue":{"session":"Zone 2 run","time":"06:00","exercises":[]},
+          "Wed":{"session":"Pull","time":"12:30","exercises":[
+            {"name":"Chest-to-Bar Pull-ups","sets":4,"reps":"5","load":"BW","note":"full ROM","swaps":["Lat Pulldown","Assisted Pull-up","Banded Pull-up"]},
+            {"name":"Archer Pull-ups","sets":3,"reps":"4 each","load":"BW","note":"slow controlled","swaps":["Single Arm Lat Pulldown","One Arm Assisted Pull-up"]},
+            {"name":"Slow Negative Pull-ups","sets":3,"reps":"5","load":"BW","note":"5s descent","swaps":["Band Pull-up","Lat Pulldown"]},
+            {"name":"Barbell Rows","sets":4,"reps":"8","load":"70kg","note":"chest to bar","swaps":["DB Row","Cable Row","T-Bar Row"]},
+            {"name":"Face Pulls","sets":3,"reps":"15","load":"20kg","note":"external rotation","swaps":["Band Pull Apart","Rear Delt Fly","Cable Rear Delt"]},
+            {"name":"Bicep Curls","sets":3,"reps":"10","load":"16kg","note":"supinate at top","swaps":["Hammer Curl","Cable Curl","Preacher Curl"]}
+          ]},
+          "Thu":{"session":"Intervals","time":"06:00","exercises":[]},
+          "Fri":{"session":"Rest","time":null,"exercises":[]},
+          "Sat":{"session":"Parkrun","time":"07:30","exercises":[]},
+          "Sun":{"session":"Long run + yoga","time":"06:00","exercises":[]}
+        }}]}}
 
         RULES:
-        - Each day must have "session" (description) and "time" (HH:MM start, null for rest)
-        - Include ALL weeks requested — do not stop early
-        - Keep Mon Push/Tue Z2/Wed Pull/Thu Intervals/Fri Rest/Sat Parkrun/Sun Long run every week
-        - Use actual weights from lift history for bench progression
+        - EVERY gym day (Push/Pull/Legs) MUST include a full "exercises" array — never leave it empty for gym days
+        - Run/yoga/rest days: exercises=[]
+        - Each exercise needs: name, sets, reps, load, note, swaps (3 alternatives)
+        - "session" = short label, exercises array = full detail
+        - totalKm = sum of all run distances that week (calculate accurately)
+        - time = HH:MM in SGT (Singapore Time) — gym at lunch, runs pre-7am or evening
+        - Include ALL weeks — do not stop early
+        - Use athlete's actual logged weights for progressive overload
         - 10% weekly run volume increase
-        - Short strings only to avoid JSON truncation
-        - Default times: gym sessions=12:00 (lunch), morning runs=06:00, parkrun=07:00, yoga=09:00
-        - If athlete specifies different times, use those instead
+        - Short strings only — critical to avoid JSON truncation
         If no plan change needed: planUpdated=false, updatedPlan=null.`;
 
         try {
